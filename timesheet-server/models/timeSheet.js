@@ -15,8 +15,10 @@ const timesheetSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  // Dynamic timesheet values based on project.fields
   data: {
-    type: mongoose.Schema.Types.Mixed, // Stores dynamic values
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,  // value can be string, number, boolean, etc.
     required: true
   }
 }, { timestamps: true });
