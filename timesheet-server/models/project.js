@@ -7,17 +7,12 @@ const fieldSchema = new mongoose.Schema({
     required: true
   },
   fieldType: {
-    type: String,
-    required: true,
-    enum: ['text', 'number', 'date', 'dropdown', 'boolean']
+   fieldType: { type: String, enum: ['String', 'Number', 'Date', 'Boolean'],
+     required: true },
   },
   required: {
     type: Boolean,
     default: false
-  },
-  options: {
-    type: [String],
-    default: []
   }
 });
 

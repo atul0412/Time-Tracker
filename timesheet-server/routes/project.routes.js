@@ -13,7 +13,7 @@ const router = express.Router();
 router.post('/create', protect, adminOnly, createProject);
 
 // Public or authenticated users: Get all projects
-router.get('/allProject', protect, getAllProjects);
+router.get('/allProject', getAllProjects);
 
 // Admin-only: Delete a project
 router.delete('/delete/:id', protect, adminOnly, deleteProject);

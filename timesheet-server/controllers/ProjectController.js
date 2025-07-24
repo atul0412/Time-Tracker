@@ -1,29 +1,43 @@
 // controllers/projectController.js
 import Project from '../models/project.js';
-
 export const createProject = async (req, res) => {
   try {
+    console.log('Request Body:', req.body);
+    console.log('User:', req.user); // should contain _id
+
     const { name, description, fields } = req.body;
+
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: 'Unauthorized: No user info found' });
+    }
 
     const newProject = await Project.create({
       name,
       description,
       fields,
-      createdBy: req.user._id
+      createdBy: req.user._id,
     });
 
     res.status(201).json(newProject);
   } catch (err) {
+    console.error('Create Project Error:', err);
     res.status(500).json({ message: 'Failed to create project', error: err.message });
   }
 };
 
+
 export const getAllProjects = async (req, res) => {
   try {
-    const projects = await Project.find();
-    res.json(projects);
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch projects', error: err.message });
+    const projects = await Project.find().populate('createdBy', 'name');
+    res.status(200).json({
+      success: true,
+      data: projects,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    });
   }
 };
 
