@@ -1,4 +1,4 @@
-import Timesheet from '../models/Timesheet.js';
+import Timesheet from '../models/timeSheet.js';
 // Create a new timesheet entry
 export const submitTimesheet = async (req, res) => {
   try {
@@ -16,13 +16,20 @@ export const submitTimesheet = async (req, res) => {
   }
 };
 
-// Get all timesheets for the logged-in user
-export const getUserTimesheets = async (req, res) => {
+ // get time sheets for a specific project
+export const getTimesheetsByProject = async (req, res) => {
   try {
-    const timesheets = await Timesheet.find({ user: req.user._id }).populate('project');
+    const { id } = req.params;
+
+    let query = { project: id };
+
+   
+
+    const timesheets = await Timesheet.find(query).populate('user', 'name email');
+
     res.json(timesheets);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch timesheets', error: err.message });
+    res.status(500).json({ message: 'Failed to fetch project timesheets', error: err.message });
   }
 };
 

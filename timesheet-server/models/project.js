@@ -7,8 +7,9 @@ const fieldSchema = new mongoose.Schema({
     required: true
   },
   fieldType: {
-   fieldType: { type: String, enum: ['String', 'Number', 'Date', 'Boolean'],
-     required: true },
+    type: String,
+    enum: ['String', 'Number', 'Date', 'Boolean'],
+    required: true
   },
   required: {
     type: Boolean,
@@ -17,19 +18,23 @@ const fieldSchema = new mongoose.Schema({
 });
 
 // Project schema with dynamic timesheet fields
-const projectSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
+const projectSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true
+    },
+    description: String,
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    fields: [fieldSchema]
   },
-  description: String,
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  fields: [fieldSchema] // renamed from `fields` to `timesheetSchema`
-}, { timestamps: true });
+  { timestamps: true }
+);
+
 
 const Project = mongoose.model('Project', projectSchema);
 export default Project;
