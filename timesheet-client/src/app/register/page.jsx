@@ -26,11 +26,7 @@ export default function RegisterPage() {
     setErrorMsg('');
 
     try {
-      console.log('Sending form data:', formData); // ✅ Debug log
-
       const res = await api.post('/users/register', formData);
-
-      console.log('Response:', res); // ✅ Debug log
 
       if (res.status === 201 || res.status === 200) {
         toast.success('Registration successful!');
@@ -39,71 +35,70 @@ export default function RegisterPage() {
         setErrorMsg('Unexpected response from server');
       }
     } catch (err) {
-      console.error('Registration error:', err); // ✅ More detailed logging
       setErrorMsg(
-        err?.response?.data?.message ||
-        err?.message ||
-        'Registration failed'
+        err?.response?.data?.message || err?.message || 'Registration failed'
       );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-gray-200 px-4">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-6">Register</h1>
+    <div className="flex  justify-center bg-gradient-to-br  px-4 mt-10">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+        <h1 className="text-4xl font-extrabold text-center text-purple-950 mb-8">Create Account</h1>
 
         {errorMsg && (
-          <div className="mb-4 text-red-600 text-sm text-center">
+          <div className="mb-4 px-4 py-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm text-center">
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700">Name</label>
+            <label className="block text-gray-700 font-medium mb-1">Name</label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
+              placeholder="John Doe"
               required
             />
           </div>
 
           <div>
-            <label className="block text-gray-700">Email</label>
+            <label className="block text-gray-700 font-medium mb-1">Email</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
+              placeholder="you@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-gray-700">Password</label>
+            <label className="block text-gray-700 font-medium mb-1">Password</label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
+              placeholder="••••••••"
               required
             />
           </div>
 
           <div>
-            <label className="block text-gray-700">Role</label>
+            <label className="block text-gray-700 font-medium mb-1">Role</label>
             <select
               name="role"
               value={formData.role}
               onChange={handleChange}
-              className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
@@ -112,15 +107,17 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-md hover:bg-blue-700 transition"
+            className="w-full bg-purple-950 hover:bg-purple-900 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-md"
           >
             Register
           </button>
         </form>
 
-        <p className="text-sm text-center mt-4 text-gray-600">
+        <p className="text-sm text-center mt-6 text-gray-600">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">Login</a>
+          <a href="/login" className="text-purple-800 font-medium hover:underline">
+            Login
+          </a>
         </p>
       </div>
     </div>

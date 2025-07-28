@@ -25,7 +25,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-200 to-blue-100 px-4 py-8 sm:px-6 lg:px-16">
+    <div className="min-h-screen bg-gradient-to-brpx-4 py-8 sm:px-6 lg:px-16">
       {loading && (
         <p className="text-center text-gray-500 text-lg">Loading projects...</p>
       )}

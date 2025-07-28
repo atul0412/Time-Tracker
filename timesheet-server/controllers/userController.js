@@ -45,3 +45,18 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Login failed', error: err.message });
   }
 };
+
+// Get all users (admin only)
+export const getAllUsers = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admins only' });
+    }
+
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch users', error: err.message });
+  }
+};

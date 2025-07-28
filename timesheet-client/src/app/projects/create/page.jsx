@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import api from '@/lib/axios';
 
@@ -12,6 +13,7 @@ export default function CreateProject() {
   });
 
   const [errors, setErrors] = useState({});
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -73,50 +75,52 @@ export default function CreateProject() {
     try {
       await api.post('/projects/create', projectData);
       toast.success('Project created successfully');
-      setProjectData({ name: '', description: '', fields: [] });
-      setErrors({});
+      router.push('/');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create project');
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-4 text-blue-600">Add Project</h2>
+    <div className="max-w-3xl mx-auto mt-12 px-6 py-8 bg-gray-200 shadow-xl rounded-2xl">
+      <h2 className="text-3xl font-extrabold mb-6 text-purple-950">Add New Project</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Project Name */}
         <div>
-          <label className="block font-medium">Project Name</label>
+          <label className="block text-sm font-medium text-gray-700">Project Name</label>
           <input
             type="text"
             name="name"
             value={projectData.name}
             onChange={handleChange}
-            className={`w-full mt-1 p-2 border rounded-md ${
-              errors.name ? 'border-red-500' : ''
-            }`}
+            placeholder="Enter project name"
+            className={`mt-2 w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
           />
           {errors.name && (
             <p className="text-red-500 text-sm mt-1">{errors.name}</p>
           )}
         </div>
 
+        {/* Description */}
         <div>
-          <label className="block font-medium">Description</label>
+          <label className="block text-sm font-medium text-gray-700">Description</label>
           <textarea
             name="description"
             value={projectData.description}
             onChange={handleChange}
-            className="w-full mt-1 p-2 border rounded-md"
-            rows="3"
+            placeholder="Brief project description"
+            className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800"
+            rows="4"
           />
         </div>
 
+        {/* Dynamic Fields */}
         <div>
-          <label className="block font-medium mb-2">Fields</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Project Fields</label>
 
           {projectData.fields.map((field, index) => (
-            <div key={index} className="flex gap-3 mb-2 items-start">
+            <div key={index} className="flex flex-col sm:flex-row gap-3 mb-4">
               <div className="flex-1">
                 <input
                   type="text"
@@ -124,29 +128,22 @@ export default function CreateProject() {
                   placeholder="Field Name"
                   value={field.fieldName}
                   onChange={(e) => handleFieldChange(index, e)}
-                  className={`w-full p-2 border rounded-md ${
-                    errors[`fieldName_${index}`] ? 'border-red-500' : ''
-                  }`}
+                  className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldName_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}`}
                 />
                 {errors[`fieldName_${index}`] && (
-                  <p className="text-red-500 text-sm">
+                  <p className="text-red-500 text-sm mt-1">
                     {errors[`fieldName_${index}`]}
                   </p>
                 )}
               </div>
 
-              <div>
+              <div className="w-full sm:w-48">
                 <select
                   name="fieldType"
                   value={field.fieldType}
                   onChange={(e) => handleFieldChange(index, e)}
-                  className={`p-2 border rounded-md ${
-                    errors[`fieldType_${index}`] ? 'border-red-500' : ''
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldType_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}`}
                 >
-                  <option value="" disabled>
-                    Choose a fieldType
-                  </option>
                   <option value="String">String</option>
                   <option value="Number">Number</option>
                   <option value="Date">Date</option>
@@ -162,9 +159,9 @@ export default function CreateProject() {
               <button
                 type="button"
                 onClick={() => removeField(index)}
-                className="text-red-500 hover:text-red-700 mt-2"
+                className="text-red-500 hover:text-red-700 mt-1 sm:mt-0"
               >
-                X
+                ✕
               </button>
             </div>
           ))}
@@ -172,15 +169,16 @@ export default function CreateProject() {
           <button
             type="button"
             onClick={addField}
-            className="mt-2 text-blue-600 font-semibold hover:underline"
+            className="mt-2 text-sm font-semibold text-purple-800 hover:underline"
           >
             + Add Field
           </button>
         </div>
 
+        {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+          className="w-full bg-purple-800 hover:bg-purple-900 text-white font-semibold py-3 rounded-lg shadow-md transition"
         >
           Create Project
         </button>

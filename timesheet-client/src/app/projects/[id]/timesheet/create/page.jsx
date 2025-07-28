@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import api from '@/lib/axios';
 
 export default function TimesheetForm() {
   const { id } = useParams(); // project ID
+  const router = useRouter();
+
   const [project, setProject] = useState(null);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -22,7 +24,6 @@ export default function TimesheetForm() {
 
       setProject(projectData);
 
-      // Initialize form data
       const initialFields = {};
       projectData?.fields?.forEach((f) => {
         initialFields[f.fieldName] = f.fieldType === 'Boolean' ? false : '';
@@ -53,12 +54,8 @@ export default function TimesheetForm() {
       await api.post('/timesheets/create-timesheet', payload);
       toast.success('Timesheet submitted');
 
-      // Reset form fields
-      const resetFields = {};
-      project?.fields?.forEach((f) => {
-        resetFields[f.fieldName] = f.fieldType === 'Boolean' ? false : '';
-      });
-      setFormData(resetFields);
+      // Redirect to project detail page after submission
+      router.push(`/projects/${id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Submission failed');
     } finally {
@@ -69,6 +66,9 @@ export default function TimesheetForm() {
   const renderField = (field) => {
     const { fieldName, fieldType } = field;
 
+    const commonClasses =
+      'w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-950';
+
     switch (fieldType) {
       case 'String':
         return (
@@ -77,7 +77,7 @@ export default function TimesheetForm() {
             name={fieldName}
             value={formData[fieldName] || ''}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className={commonClasses}
             required
           />
         );
@@ -88,7 +88,7 @@ export default function TimesheetForm() {
             name={fieldName}
             value={formData[fieldName] || ''}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className={commonClasses}
             required
           />
         );
@@ -99,18 +99,22 @@ export default function TimesheetForm() {
             name={fieldName}
             value={formData[fieldName] || ''}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className={commonClasses}
             required
           />
         );
       case 'Boolean':
         return (
-          <input
-            type="checkbox"
-            name={fieldName}
-            checked={formData[fieldName] || false}
-            onChange={handleChange}
-          />
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="checkbox"
+              name={fieldName}
+              checked={formData[fieldName] || false}
+              onChange={handleChange}
+              className="h-4 w-4 text-purple-950 focus:ring-purple-950 border-gray-300 rounded"
+            />
+            <span className="text-sm text-gray-700">Yes / No</span>
+          </div>
         );
       default:
         return null;
@@ -118,19 +122,27 @@ export default function TimesheetForm() {
   };
 
   if (!project || !project.fields) {
-    return <p className="text-center text-gray-600 py-8">Loading project fields...</p>;
+    return (
+      <p className="text-center text-gray-600 py-10 text-lg">
+        Loading project fields...
+      </p>
+    );
   }
 
   return (
-    <div className="max-w-xl mx-auto mt-10 bg-white p-6 shadow rounded">
-      <h2 className="text-2xl font-semibold text-blue-600 mb-4">
-        Submit Timesheet for {project.name}
-      </h2>
+    <div className="max-w-2xl mx-auto mt-12 px-6 py-8 bg-white shadow-xl rounded-2xl">
+      <h2 className="text-3xl font-bold text-purple-950 mb-6">Submit Timesheet</h2>
+      <p className="text-gray-700 mb-6 text-lg">
+        Project:{' '}
+        <span className="font-medium text-gray-900">{project.name}</span>
+      </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {project.fields.map((field, index) => (
           <div key={index}>
-            <label className="block font-medium mb-1">{field.fieldName}</label>
+            <label className="block text-sm font-medium text-gray-800 mb-1">
+              {field.fieldName}
+            </label>
             {renderField(field)}
           </div>
         ))}
@@ -138,7 +150,7 @@ export default function TimesheetForm() {
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+          className="w-full bg-purple-700 hover:bg-purple-950 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200"
         >
           {loading ? 'Submitting...' : 'Submit Timesheet'}
         </button>
