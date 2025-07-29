@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/axios";
+import api from "../lib/axios";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -65,7 +65,7 @@ export default function DashboardPage() {
           <Link
            key={project._id}
             href={`/projects/${project._id}`}
-            className="relative bg-white block p-6 border border-gray-100 rounded-lg max-w-sm"
+            className="relative bg-white block p-6 border border-gray-100 rounded-lg ml-2.5max-w-sm"
           >
             <span className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-purple-950 via-purple-400 to-purple-950"></span>
 

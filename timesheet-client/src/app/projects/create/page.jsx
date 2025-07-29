@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import api from '@/lib/axios';
+import api from '../../../lib/axios';
+import { toast } from 'react-hot-toast';
+import { Trash2 } from 'lucide-react';
 
 export default function CreateProject() {
   const [projectData, setProjectData] = useState({
@@ -161,7 +162,7 @@ export default function CreateProject() {
                 onClick={() => removeField(index)}
                 className="text-red-500 hover:text-red-700 mt-1 sm:mt-0"
               >
-                ✕
+                <Trash2 size={14} className="mr-1" />
               </button>
             </div>
           ))}
