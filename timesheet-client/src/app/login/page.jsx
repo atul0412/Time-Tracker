@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '@/lib/axios';
+import api from '../../lib/axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext'; // ✅ import auth context
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
+  const { setUser } = useAuth(); // ✅ use setUser from context
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,6 +27,7 @@ export default function LoginPage() {
       if (res.status === 200) {
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
+        setUser(res.data.user); // ✅ update context with user
         toast.success('Login successful!');
         router.push('/');
       }
@@ -78,7 +81,7 @@ export default function LoginPage() {
             Sign In
           </button>
         </form>
-        </div>
       </div>
+    </div>
   );
 }

@@ -1,43 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Menu, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext'; // ✅
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [role, setRole] = useState('');
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      setRole(user.role);
-    }
-  }, []);
+  const { user, setUser } = useAuth(); // ✅ Use global auth
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setUser(null); // ✅ clear context
     toast.success('Logout successful');
     router.push('/login');
   };
 
   // Base nav links
-  const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/projects/create', label: 'Add Project' },
-    { href: '/AssignedProject', label: 'AssignedProject' },
-    
-  ];
+  const navLinks = [{ href: '/', label: 'Home' }];
 
-  // Add admin-only link
-  if (role === 'admin') {
+  // Add admin-only links
+  if (user?.role === 'admin') {
     navLinks.push({ href: '/user', label: 'All Users' });
+    navLinks.push({ href: '/projects/create', label: 'Add Project' });
+    navLinks.push({ href: '/AssignedProject', label: 'Assigned Project' });
   }
 
   if (pathname === '/login') return null;
@@ -46,27 +37,21 @@ export default function Navbar() {
     <nav className="bg-purple-950 p-4 sticky top-0 z-50">
       <div className="max-w-8xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex-shrink-0">
-            <Link
-              href="/"
-              className="text-white font-bold text-3xl mb-4 lg:mb-0 hover:text-orange-600 hover:cursor-pointer"
-            >
-              Time-Sheet
-            </Link>
-          </div>
+          <Link
+            href="/"
+            className="text-white font-bold text-3xl hover:text-orange-600"
+          >
+            Time-Sheet
+          </Link>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-white focus:outline-none"
-              >
+              <Link key={link.href} href={link.href} className="text-white">
                 {link.label}
               </Link>
             ))}
-            {pathname !== '/login' && (
+            {user && (
               <button
                 onClick={handleLogout}
                 className="text-white hover:text-red-500 transition"
@@ -98,13 +83,13 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          {pathname !== '/login' && (
+          {user && (
             <button
               onClick={() => {
                 setIsOpen(false);
                 handleLogout();
               }}
-              className="block text-white hover:text-red-500 transition w-full text-left"
+              className="block text-white hover:text-red-500 w-full text-left"
             >
               Logout
             </button>

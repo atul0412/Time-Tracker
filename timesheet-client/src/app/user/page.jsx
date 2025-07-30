@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
-import api from '@/lib/axios';
+import api from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 
 export default function AllUsersPage() {

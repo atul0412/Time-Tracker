@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import userRoutes from './routes/user.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import timesheetRoutes from './routes/timeSheet.routes.js';
+import assignProject from './routes/assignProject.route.js';
 
 dotenv.config(); 
 
@@ -30,6 +31,7 @@ app.use(cors({
 app.use('/api/users', userRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/timesheets", timesheetRoutes);
+app.use('/api/assignProject', assignProject); // Use the same route for assigning projects
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

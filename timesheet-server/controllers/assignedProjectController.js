@@ -33,3 +33,21 @@ export const assignProjectToUser = async (req, res) => {
     res.status(500).json({ message: 'Failed to assign project', error: err.message });
   }
 };
+
+// ✅ NEW: Get all assigned projects with populated user and project data
+export const getAllAssignedProjects = async (req, res) => {
+  try {
+    const assignments = await AssignedProject.find()
+      .populate('user', 'name email')
+      .populate('project', 'name');
+
+    res.status(200).json({
+      success: true,
+      data: assignments,
+    });
+  } catch (err) {
+    console.error('Get Assigned Projects Error:', err);
+    res.status(500).json({ message: 'Failed to fetch assigned projects', error: err.message });
+  }
+};
+

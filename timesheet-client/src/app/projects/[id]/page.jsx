@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import api from '../../../lib/axios';
 import toast from 'react-hot-toast';
 import { Pencil, Trash2 } from 'lucide-react';
+import { exportTimesheetToExcel } from '../../../lib/exportToExcel';
+
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -30,6 +32,8 @@ export default function ProjectDetailsPage() {
     fields: [],
   });
 
+  const [userRole, setUserRole] = useState('');
+
   const groupByDate = (entries) => {
     return entries.reduce((acc, entry) => {
       const date = new Date(entry.date).toLocaleDateString();
@@ -39,24 +43,36 @@ export default function ProjectDetailsPage() {
     }, {});
   };
 
-  useEffect(() => {
-    const fetchProjectAndTimesheets = async () => {
-      try {
-        const [projectRes, timesheetRes] = await Promise.all([
-          api.get(`/projects/${id}`),
-          api.get(`/timesheets/project/${id}`),
-        ]);
-        setProject(projectRes.data.data || projectRes.data);
-        setTimesheets(timesheetRes.data || []);
-      } catch (err) {
-        setError(err?.response?.data?.message || 'Failed to load project or timesheets');
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    if (id) fetchProjectAndTimesheets();
-  }, [id]);
+ useEffect(() => {
+  const fetchProjectAndTimesheets = async () => {
+    try {
+      const [projectRes, timesheetRes] = await Promise.all([
+        api.get(`/projects/${id}`),
+        api.get(`/timesheets/project/${id}`),
+      ]);
+      setProject(projectRes.data.data || projectRes.data);
+      setTimesheets(timesheetRes.data || []);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to load project or timesheets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserRole = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      setUserRole(user?.role || '');
+    } catch {
+      setUserRole('');
+    }
+  };
+
+  if (id) fetchProjectAndTimesheets(); 
+  loadUserRole();
+}, [id]);
+
 
   const handleDelete = async () => {
     try {
@@ -80,6 +96,7 @@ export default function ProjectDetailsPage() {
       toast.error('Failed to delete timesheet');
     }
   };
+
 
   const openEditModal = (entry) => {
     setEditingEntry(entry);
@@ -121,8 +138,8 @@ export default function ProjectDetailsPage() {
 
   const handleAddSubmit = async () => {
     try {
-      const res = await api.post(`/timesheets`, {
-        projectId: id,
+      const res = await api.post(`/timesheets/create-timesheet`, {
+        project: id,
         data: addFormData,
       });
       toast.success('Timesheet added');
@@ -132,6 +149,7 @@ export default function ProjectDetailsPage() {
       toast.error(err?.response?.data?.message || 'Failed to add timesheet');
     }
   };
+  
 
   if (loading) return <p className="p-8 text-center text-gray-500">Loading project...</p>;
   if (error) return <p className="p-8 text-center text-red-600 font-semibold">{error}</p>;
@@ -153,28 +171,35 @@ export default function ProjectDetailsPage() {
             >
               + Add Timesheet
             </button>
+    {userRole === 'admin' && (
+              <>
+                <button
+                  onClick={() => {
+                    setProjectFormData({
+                      name: project.name || '',
+                      description: project.description || '',
+                      fields: project.fields || [],
+                    });
+                    setEditingProject(true);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition"
+                >
+                  <Pencil size={14} className="mr-1" />
+                </button>
 
-            <button
-              onClick={() => {
-                setProjectFormData({
-                  name: project.name || '',
-                  description: project.description || '',
-                  fields: project.fields || [],
-                });
-                setEditingProject(true);
-              }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition"
-            >
-              <Pencil size={14} className="mr-1" />
-            </button>
-
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-500 transition disabled:opacity-50"
-            >
-              <Trash2 size={16} />
-            </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-500 transition disabled:opacity-50"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </>
+            )}
+             <button onClick={() => exportTimesheetToExcel(project, timesheets)}
+                   className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-950 transition">
+                  Export Timesheets
+                </button>
           </div>
         </div>
 

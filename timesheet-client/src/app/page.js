@@ -35,31 +35,6 @@ export default function DashboardPage() {
           No projects available.
         </p>
       )}
-
-      {/* <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {projects.map((project) => (
-          <Link
-            key={project._id}
-            href={`/projects/${project._id}`}
-            className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 p-6 flex flex-col justify-between cursor-pointer hover:ring-2 hover:ring-blue-400"
-          >
-            <div>
-              <h2 className="text-2xl font-semibold text-blue-700 mb-2">
-                {project.name}
-              </h2>
-              <p className="text-gray-600 mb-4">{project.description}</p>
-            </div>
-            <div className="mt-auto">
-              <p className="text-sm text-gray-400">
-                Created by:{" "}
-                <span className="font-medium">
-                  {project.createdBy?.name || "Unknown"}
-                </span>
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div> */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {projects.map((project) => (
           <Link
@@ -85,3 +60,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+ 

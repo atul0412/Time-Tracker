@@ -110,7 +110,7 @@ export const updateProject = async (req, res) => {
 };
 
 // ✅ Admin-only: Assign a project to a user
-export const assignProjectToUser = async (req, res) => {
+export const updateAssignProjectToUser = async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied: Admins only' });
   }
@@ -136,5 +136,27 @@ export const assignProjectToUser = async (req, res) => {
   } catch (err) {
     console.error('Assign Project Error:', err);
     res.status(500).json({ message: 'Failed to assign project', error: err.message });
+  }
+};
+
+export const getMyProjects = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const projects = await Project.find({ assignedUsers: userId })
+      .populate("createdBy", "name")
+      .populate("assignedUsers", "name email");
+
+    res.status(200).json({
+      success: true,
+      data: projects,
+    });
+  } catch (error) {
+    console.error('Get My Projects Error:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch assigned projects",
+      error: error.message,
+    });
   }
 };
