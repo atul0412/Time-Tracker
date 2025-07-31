@@ -5,33 +5,37 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Menu, X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext'; // ✅
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { user, setUser } = useAuth(); // ✅ Use global auth
+  const { user, setUser } = useAuth();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setUser(null); // ✅ clear context
+    setUser(null);
     toast.success('Logout successful');
     router.push('/login');
   };
 
-  // Base nav links
   const navLinks = [{ href: '/', label: 'Home' }];
 
-  // Add admin-only links
   if (user?.role === 'admin') {
     navLinks.push({ href: '/user', label: 'All Users' });
     navLinks.push({ href: '/projects/create', label: 'Add Project' });
     navLinks.push({ href: '/AssignedProject', label: 'Assigned Project' });
   }
 
-  if (pathname === '/login') return null;
+  // 🔒 Hide navbar on auth pages
+  if (
+    pathname === '/login' ||
+    pathname === '/forgot-password' ||
+    pathname.startsWith('/reset-password')
+  )
+    return null;
 
   return (
     <nav className="bg-purple-950 p-4 sticky top-0 z-50">

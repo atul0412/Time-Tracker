@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext'; // ✅ import auth context
+import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeOff } from 'lucide-react'; // ✅ icons for password toggle
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false); // ✅ password visibility toggle
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
-  const { setUser } = useAuth(); // ✅ use setUser from context
+  const { setUser } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +30,7 @@ export default function LoginPage() {
       if (res.status === 200) {
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
-        setUser(res.data.user); // ✅ update context with user
+        setUser(res.data.user);
         toast.success('Login successful!');
         router.push('/');
       }
@@ -37,7 +40,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br px-4">
+    <div className=" flex items-center justify-center bg-gradient-to-br px-4">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
         <h1 className="text-4xl font-extrabold text-center text-purple-950 mb-8">Welcome Back</h1>
 
@@ -63,15 +66,31 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-gray-700 font-medium mb-1">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 pr-10"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-800"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <Link href="/forgot-password" className="text-sm text-purple-800 hover:underline">
+              Forgot Password?
+            </Link>
           </div>
 
           <button

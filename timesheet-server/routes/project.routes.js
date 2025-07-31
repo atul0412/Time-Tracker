@@ -17,7 +17,7 @@ router.post('/create', protect, adminOnly, createProject);
 
 
 // Public or authenticated users: Get all projects
-router.get('/allProject', getAllProjects);
+router.get('/allProject', protect, adminOnly, getAllProjects);
 
 // Get project by ID
 router.get('/:id', protect, getProjectById);
@@ -28,8 +28,6 @@ router.delete('/delete/:id', protect, adminOnly, deleteProject);
 // Admin-only: Update a project
 router.put('/:id', protect, adminOnly, updateProject);
 
-// Show projects assigned to logged-in user
-router.get('/my-projects/:id', protect, getMyProjects);
 
 
 

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import AssignedProject from '../models/assignedProject.js';
 
 export const assignProjectToUser = async (req, res) => {
@@ -48,6 +49,72 @@ export const getAllAssignedProjects = async (req, res) => {
   } catch (err) {
     console.error('Get Assigned Projects Error:', err);
     res.status(500).json({ message: 'Failed to fetch assigned projects', error: err.message });
+  }
+};
+
+// GET assigned projects by user ID
+export const getAssignedProjectsByUserId = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid userId' });
+  }
+
+  try {
+    const assignments = await AssignedProject.aggregate([
+      {
+        $match: { user: new mongoose.Types.ObjectId(userId) }
+      },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectInfo'
+        }
+      },
+      {
+        $unwind: '$projectInfo'
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      {
+        $unwind: '$userInfo'
+      },
+      {
+        $project: {
+          _id: 1,
+          project: {
+            _id: '$projectInfo._id',
+            name: '$projectInfo.name',
+            description: '$projectInfo.description',
+            createdAt: '$projectInfo.createdAt'
+          },
+          user: {
+            _id: '$userInfo._id',
+            name: '$userInfo.name',
+            email: '$userInfo.email'
+          }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: assignments
+    });
+  } catch (err) {
+    console.error('Aggregation Error:', err);
+    res.status(500).json({
+      message: 'Failed to fetch assigned projects using aggregation',
+      error: err.message
+    });
   }
 };
 

@@ -158,7 +158,7 @@ export default function ProjectDetailsPage() {
   const grouped = groupByDate(timesheets);
 
   return (
-    <div className="min-h-screen px-4 py-10 sm:px-6 lg:px-20 relative">
+    <div className=" px-4 py-10 sm:px-6 lg:px-20 relative">
       <div className="max-w-5xl mx-auto">
         {/* Project Info */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

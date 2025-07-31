@@ -85,7 +85,7 @@ export default function AllUsersPage() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-10 sm:px-6 lg:px-20">
+    <div className=" px-4 py-10 sm:px-6 lg:px-20">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
