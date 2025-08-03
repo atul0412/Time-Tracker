@@ -44,34 +44,34 @@ export default function ProjectDetailsPage() {
   };
 
 
- useEffect(() => {
-  const fetchProjectAndTimesheets = async () => {
-    try {
-      const [projectRes, timesheetRes] = await Promise.all([
-        api.get(`/projects/${id}`),
-        api.get(`/timesheets/project/${id}`),
-      ]);
-      setProject(projectRes.data.data || projectRes.data);
-      setTimesheets(timesheetRes.data || []);
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load project or timesheets');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const fetchProjectAndTimesheets = async () => {
+      try {
+        const [projectRes, timesheetRes] = await Promise.all([
+          api.get(`/projects/${id}`),
+          api.get(`/timesheets/project/${id}`),
+        ]);
+        setProject(projectRes.data.data || projectRes.data);
+        setTimesheets(timesheetRes.data || []);
+      } catch (err) {
+        setError(err?.response?.data?.message || 'Failed to load project or timesheets');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const loadUserRole = () => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      setUserRole(user?.role || '');
-    } catch {
-      setUserRole('');
-    }
-  };
+    const loadUserRole = () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        setUserRole(user?.role || '');
+      } catch {
+        setUserRole('');
+      }
+    };
 
-  if (id) fetchProjectAndTimesheets(); 
-  loadUserRole();
-}, [id]);
+    if (id) fetchProjectAndTimesheets();
+    loadUserRole();
+  }, [id]);
 
 
   const handleDelete = async () => {
@@ -149,7 +149,7 @@ export default function ProjectDetailsPage() {
       toast.error(err?.response?.data?.message || 'Failed to add timesheet');
     }
   };
-  
+
 
   if (loading) return <p className="p-8 text-center text-gray-500">Loading project...</p>;
   if (error) return <p className="p-8 text-center text-red-600 font-semibold">{error}</p>;
@@ -171,7 +171,7 @@ export default function ProjectDetailsPage() {
             >
               + Add Timesheet
             </button>
-    {userRole === 'admin' && (
+            {userRole === 'admin' && (
               <>
                 <button
                   onClick={() => {
@@ -196,10 +196,10 @@ export default function ProjectDetailsPage() {
                 </button>
               </>
             )}
-             <button onClick={() => exportTimesheetToExcel(project, timesheets)}
-                   className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-950 transition">
-                  Export Timesheets
-                </button>
+            <button onClick={() => exportTimesheetToExcel(project, timesheets)}
+              className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-950 transition">
+              Export Timesheets
+            </button>
           </div>
         </div>
 
@@ -224,7 +224,6 @@ export default function ProjectDetailsPage() {
                     <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-2 font-semibold text-gray-700">User</th>
                           {allKeys.map((key) => (
                             <th key={key} className="px-4 py-2 font-semibold text-gray-700">
                               {key}
@@ -236,7 +235,6 @@ export default function ProjectDetailsPage() {
                       <tbody className="bg-white divide-y divide-gray-100">
                         {entries.map((entry) => (
                           <tr key={entry._id}>
-                            <td className="px-4 py-2 text-gray-700">{entry.user?.name}</td>
                             {allKeys.map((key) => (
                               <td key={key} className="px-4 py-2 text-gray-600">
                                 {entry.data?.[key]?.toString() || '-'}

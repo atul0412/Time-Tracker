@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex items-center justify-center  px-4 bg-gradient-to-br from-purple-100 to-purple-300">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-200 to-purple-300 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 relative">
         <h2 className="text-3xl font-bold text-center text-purple-950 mb-6">
           Reset Password
@@ -145,9 +145,8 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 text-white rounded-md font-semibold transition duration-150 ${
-              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-900 hover:bg-purple-950'
-            }`}
+            className={`w-full py-2 px-4 text-white rounded-md font-semibold transition duration-150 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-900 hover:bg-purple-950'
+              }`}
           >
             {loading ? 'Resetting...' : 'Reset Password'}
           </button>

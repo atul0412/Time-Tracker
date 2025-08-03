@@ -41,40 +41,40 @@ export default function AllUsersPage() {
   };
 
   const handleAddUser = async (e) => {
-  e.preventDefault();
-  setCreating(true);
-  setError('');
+    e.preventDefault();
+    setCreating(true);
+    setError('');
 
-  try {
-    const res = await api.post('/users/register', newUser);
-    const savedUser = {
-      ...newUser,
-      _id: res.data.user?._id || res.data._id,
-    };
-    setUsers((prev) => [...prev, savedUser]);
-    setShowModal(false);
-    setNewUser({ name: '', email: '', password: '', role: 'user' });
-    toast.success('User added successfully');
-  } catch (err) {
-    setError(err?.response?.data?.message || 'Failed to add user');
-    toast.error(err?.response?.data?.message || 'Failed to add user');
-  } finally {
-    setCreating(false);
-  }
-};
+    try {
+      const res = await api.post('/users/register', newUser);
+      const savedUser = {
+        ...newUser,
+        _id: res.data.user?._id || res.data._id,
+      };
+      setUsers((prev) => [...prev, savedUser]);
+      setShowModal(false);
+      setNewUser({ name: '', email: '', password: '', role: 'user' });
+      toast.success('User added successfully');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to add user');
+      toast.error(err?.response?.data?.message || 'Failed to add user');
+    } finally {
+      setCreating(false);
+    }
+  };
 
 
   const handleDeleteUser = async (userId) => {
-  try {
-    await api.delete(`/users/${userId}`);
-    setUsers((prev) => prev.filter((user) => user._id !== userId));
-    toast.success('User deleted successfully');
-  } catch (err) {
-    const msg = err?.response?.data?.message || 'Failed to delete user';
-    setError(msg);
-    toast.error(msg);
-  }
-};
+    try {
+      await api.delete(`/users/${userId}`);
+      setUsers((prev) => prev.filter((user) => user._id !== userId));
+      toast.success('User deleted successfully');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to delete user';
+      setError(msg);
+      toast.error(msg);
+    }
+  };
 
   if (loading) {
     return <p className="p-8 text-center text-gray-500">Loading users...</p>;
@@ -164,7 +164,7 @@ export default function AllUsersPage() {
                   value={newUser.name}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
-                  placeholder="John Doe"
+                  placeholder="Enter Your Name"
                   required
                 />
               </div>
@@ -177,7 +177,7 @@ export default function AllUsersPage() {
                   value={newUser.email}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
-                  placeholder="john@example.com"
+                  placeholder="Enter Your Email"
                   required
                 />
               </div>
@@ -190,7 +190,7 @@ export default function AllUsersPage() {
                   value={newUser.password}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
-                  placeholder="••••••••"
+                  placeholder="Enter Password"
                   required
                 />
               </div>

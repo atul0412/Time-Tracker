@@ -40,7 +40,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className=" flex items-center justify-center bg-gradient-to-br px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-200 to-purple-300 px-4">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
         <h1 className="text-4xl font-extrabold text-center text-purple-950 mb-8">Welcome Back</h1>
 
@@ -52,20 +52,20 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-gray-700 font-medium mb-1">Email</label>
+            <label className="block text-gray-700 font-medium mb-1">Email *</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800"
-              placeholder="you@example.com"
+              placeholder="Enter Your Passwod"
               required
             />
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-1">Password</label>
+            <label className="block text-gray-700 font-medium mb-1">Password *</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -73,7 +73,7 @@ export default function LoginPage() {
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 pr-10"
-                placeholder="••••••••"
+                placeholder="Enter Password"
                 required
               />
               <button

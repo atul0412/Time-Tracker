@@ -34,13 +34,13 @@ const getResetPasswordHtmlTemplate = (resetLink) => {
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       }
       h2 {
-        color: #4a90e2;
+        color:  #6e11b0;
       }
       a.button {
         display: inline-block;
         padding: 12px 20px;
         margin-top: 20px;
-        background-color: #4a90e2;
+        background-color:  #6e11b0;
         color: #fff;
         text-decoration: none;
         border-radius: 5px;
