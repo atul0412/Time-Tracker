@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Spinner from "../../components/spinner";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -15,19 +16,24 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const queryToken = searchParams.get('token');
     if (queryToken) {
       setToken(queryToken);
+    } else {
+      toast.error('Invalid or missing token.');
     }
   }, [searchParams]);
 
   const handleReset = async (e) => {
     e.preventDefault();
+
+    if (!token) {
+      toast.error('Missing reset token.');
+      return;
+    }
 
     if (password !== confirmPassword) {
       toast.error('Passwords do not match.');
@@ -43,7 +49,7 @@ export default function ResetPasswordPage() {
 
     try {
       const response = await api.post(
-        `/users/reset-password/${token}`,
+        `/users/reset-password?token=${encodeURIComponent(token)}`,
         { password },
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -63,32 +69,6 @@ export default function ResetPasswordPage() {
         <h2 className="text-3xl font-bold text-center text-purple-950 mb-6">
           Reset Password
         </h2>
-
-        {/* Loader */}
-        {loading && (
-          <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center rounded-2xl z-10">
-            <svg
-              className="animate-spin h-8 w-8 text-purple-900"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 11-8 8z"
-              />
-            </svg>
-          </div>
-        )}
 
         <form onSubmit={handleReset} className="space-y-4" autoComplete="off">
           {/* New Password */}
@@ -145,24 +125,18 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 text-white rounded-md font-semibold transition duration-150 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-purple-900 hover:bg-purple-950'
-              }`}
+            className="w-full bg-purple-950 hover:bg-purple-900 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Resetting...' : 'Reset Password'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Spinner/>
+                Reseting...
+              </span>
+            ) : (
+              " Reset Password"
+            )}
           </button>
         </form>
-
-        {message && (
-          <p className="mt-4 text-center text-sm font-medium text-green-600">
-            {message}
-          </p>
-        )}
-
-        {error && (
-          <p className="mt-4 text-center text-sm font-medium text-red-600">
-            {error}
-          </p>
-        )}
       </div>
     </div>
   );

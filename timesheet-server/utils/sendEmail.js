@@ -84,11 +84,11 @@ The Your App Team
   `;
 };
 
-const sendResetPasswordEmail = async (to, token) => {
+const sendResetPasswordEmail = async (to, name, url) => {
+  console.log(url)
   const subject = "Reset Your Password";
-  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-  const html = getResetPasswordHtmlTemplate(resetLink);
-  const text = getResetPasswordTextTemplate(resetLink);
+  const html = getResetPasswordHtmlTemplate(url);
+  const text = getResetPasswordTextTemplate(url);
 
   await transporter.sendMail({
     from: `"Your App Name" <${process.env.EMAIL}>`,

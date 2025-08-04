@@ -36,11 +36,7 @@ export const getTimesheetsByProject = async (req, res) => {
 // ✅ Admin only: Update timesheet
 export const updateTimesheet = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied: Admins only' });
-    }
-
-    const { id } = req.params;
+   const { id } = req.params;
     const { data } = req.body;
 
     const updatedTimesheet = await Timesheet.findByIdAndUpdate(
@@ -62,10 +58,6 @@ export const updateTimesheet = async (req, res) => {
 // ✅ Admin only: Delete timesheet
 export const deleteTimesheet = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied: Admins only' });
-    }
-
     const { id } = req.params;
 
     const deleted = await Timesheet.findByIdAndDelete(id);

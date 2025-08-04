@@ -1,10 +1,8 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import sendEmail  from '../utils/sendEmail.js';
-import dotenv from 'dotenv';
-dotenv.config();
+import sendEmail  from '../utils/sendEmail.js';// Assume you have this
+import { decrypt, encrypt } from '../utils/encryption.js'
 
 export const registerUser = async (req, res) => {
   try {
@@ -87,45 +85,111 @@ export const deleteUser = async (req, res) => {
 
 // Forgot password
 
+// export const forgotPassword = async (req, res) => {
+//   const { email } = req.body;
+//   const user = await User.findOne({ email });
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   const token = crypto.randomBytes(32).toString("hex");
+//   user.resetToken = token;
+//   user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+//   await user.save();
+
+//  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;;
+//   const message = `Click this link to reset your password: ${resetUrl}`;
+//   await sendEmail(user.email, "Reset Password", message);
+
+//   res.status(200).json({ message: "Reset email sent." });
+// };
+
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
+  try {
+    const { email } = req.body;
 
-  const token = crypto.randomBytes(32).toString("hex");
-  user.resetToken = token;
-  user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
-  await user.save();
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
- const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;;
-  const message = `Click this link to reset your password: ${resetUrl}`;
-  await sendEmail(user.email, "Reset Password", message);
+    const payload = {
+      id: user._id,
+      email: user.email
+    };
 
-  res.status(200).json({ message: "Reset email sent." });
+  const encryptedToken = encodeURIComponent(encrypt(payload));
+    console.log(encryptedToken)
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
+
+    // const message = `Click this link to reset your password: ${resetUrl}`;
+
+    await sendEmail(user.email, "Reset Password", resetUrl);
+
+    res.status(200).json({ message: "Reset email sent." });
+
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({ message: "Something went wrong." });
+  }
 };
+
+
 //  Reset password
+// export const resetPassword = async (req, res) => {
+//   const { token } = req.params;
+//   const { password } = req.body;
+
+//   if (!token) {
+//     return res.status(400).json({ message: "Missing token" });
+//   }
+
+//   console.log("Reset token received:", token);
+
+//   const user = await User.findOne({
+//     resetToken: token,
+//     resetTokenExpiry: { $gt: Date.now() },
+//   });
+
+//   if (!user) return res.status(400).json({ message: "Invalid or expired token." });
+
+//   const hashedPassword = await bcrypt.hash(password, 12);
+//   user.password = hashedPassword;
+//   user.resetToken = undefined;
+//   user.resetTokenExpiry = undefined;
+
+//   await user.save();
+//   res.status(200).json({ message: "Password reset successful." });
+// };
+
 export const resetPassword = async (req, res) => {
-  const { token } = req.params;
+  const { token } = req.query; // token passed as a query param now
   const { password } = req.body;
 
   if (!token) {
     return res.status(400).json({ message: "Missing token" });
   }
 
-  console.log("Reset token received:", token);
+  try {
+    // Decrypt the token to get the payload
+    const { payload, timestamp } = decrypt(decodeURIComponent(token));
+    const { id } = payload;
 
-  const user = await User.findOne({
-    resetToken: token,
-    resetTokenExpiry: { $gt: Date.now() },
-  });
 
-  if (!user) return res.status(400).json({ message: "Invalid or expired token." });
+    // Optional: Check if the token is expired (e.g., 1 hour = 3600000 ms)
+    if (Date.now() - timestamp > 3600000) {
+      return res.status(400).json({ message: "Token expired" });
+    }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
-  user.password = hashedPassword;
-  user.resetToken = undefined;
-  user.resetTokenExpiry = undefined;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-  await user.save();
-  res.status(200).json({ message: "Password reset successful." });
+    const hashedPassword = await bcrypt.hash(password, 12);
+    user.password = hashedPassword;
+
+    await user.save();
+    res.status(200).json({ message: "Password reset successful." });
+    
+  } catch (err) {
+    console.error("Reset Password Error:", err.message);
+    return res.status(400).json({ message: "Invalid or tampered token" });
+  }
 };

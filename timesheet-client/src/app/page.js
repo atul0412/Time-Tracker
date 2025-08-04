@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/axios';
 import Link from 'next/link';
-import { useAuth } from '../context/AuthContext'; // ✅ adjust path
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation'; // ✅ Import router
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter(); // ✅ Initialize router
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
 
   const fetchProjects = async () => {
     try {
@@ -21,10 +22,6 @@ export default function DashboardPage() {
         setProjects(res.data.data || []);
       } else if (user?.role === 'user') {
         res = await api.get(`/assignProject/user/${user.id}`);
-        console.log("User from context:", user);
-
-        console.log("Assigned projects response:", res.data);
-
         const assigned = res.data.data || [];
         const userProjects = assigned.map((item) => item.project);
         setProjects(userProjects);
@@ -39,15 +36,15 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchProjects();
+    if (!user) {
+      router.push('/login'); // ✅ Redirect to login if not authenticated
     } else {
-      setLoading(false);
+      fetchProjects();
     }
   }, [user]);
 
   return (
-    <div className=" bg-gradient-to-br px-4 py-8 sm:px-6 lg:px-16">
+    <div className="bg-gradient-to-br px-4 py-8 sm:px-6 lg:px-16">
       {loading && (
         <p className="text-center text-gray-500 text-lg">Loading projects...</p>
       )}

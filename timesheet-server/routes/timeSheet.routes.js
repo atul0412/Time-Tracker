@@ -16,9 +16,9 @@ router.post('/create-timesheet', protect, submitTimesheet);
 router.get('/project/:id', getTimesheetsByProject);
 
 // Admin-only: Update a specific timesheet
-router.put('/:id', protect, adminOnly,  updateTimesheet);
+router.put('/:id', protect,  updateTimesheet);
 
 // Admin-only: Delete a specific timesheet
-router.delete('/:id', protect, adminOnly, deleteTimesheet);
+router.delete('/:id', protect, deleteTimesheet);
 
 export default router;
