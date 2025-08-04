@@ -164,7 +164,7 @@ export default function ProjectDetailsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-3xl font-bold text-black">{project.name}</h1>
 
-          <div className="flex gap-3 mt-1 sm:mt-0">
+          <div className="flex flex-wrap gap-3 mt-1 sm:mt-0">
             <button
               onClick={openAddModal}
               className="bg-purple-950 text-white px-4 py-2 rounded-md hover:bg-purple-800 transition"
@@ -269,7 +269,12 @@ export default function ProjectDetailsPage() {
                       >
                         <details className="p-4 group">
                           <summary className="cursor-pointer font-semibold text-gray-800 text-base list-none flex justify-between items-center">
-                            <span>{entry.user?.name || 'N/A'}</span>
+                            <span>
+                              {entry.data?.['Task Details']
+                                ? entry.data['Task Details'].split(' ').slice(0, 7).join(' ') +
+                                (entry.data['Task Details'].split(' ').length > 7 ? '...' : '')
+                                : 'N/A'}
+                            </span>
                             <span className="text-sm text-purple-900 group-open:rotate-180 transition-transform">
                               ▼
                             </span>
