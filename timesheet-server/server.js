@@ -19,11 +19,23 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-app.use(cors({
-  origin: 'https://time-sheet-o39i.vercel.app/', // your Next.js frontend URL
-  credentials: true
-}));
+const allowedOrigins = [
+  'https://time-sheet-o39i.vercel.app',
+  'https://time-sheet-o39i-355pycdmc-atul0412s-projects.vercel.app', // your preview deployment
+  'http://localhost:3000',
+];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS error: ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  })
+);
 
 
 
