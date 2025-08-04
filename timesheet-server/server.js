@@ -20,11 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-app.use(cors({
-  origin: '*', // your Next.js frontend URL
-  credentials: true
-}));
-
+app.use(cors());
 
 
 // define Routes
