@@ -6,6 +6,7 @@ import api from '../../lib/axios';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Spinner from "../../components/spinner";
+import { Suspense } from 'react';
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -64,6 +65,7 @@ export default function ResetPasswordForm() {
   };
 
   return (
+     <Suspense fallback={<div className="p-6 text-center text-gray-600">Loading reset form...</div>}>
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-200 to-purple-300 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 relative">
         <h2 className="text-3xl font-bold text-center text-purple-950 mb-6">
@@ -139,5 +141,7 @@ export default function ResetPasswordForm() {
         </form>
       </div>
     </div>
+    </Suspense>
+
   );
 }
