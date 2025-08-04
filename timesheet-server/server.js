@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use(cors({
-  origin: 'http://localhost:3000', // your Next.js frontend URL
+  origin: 'https://time-sheet-o39i.vercel.app/', // your Next.js frontend URL
   credentials: true
 }));
 
