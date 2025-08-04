@@ -6,11 +6,17 @@ import api from '../../../lib/axios';
 import { toast } from 'react-hot-toast';
 import { Trash2 } from 'lucide-react';
 
+const defaultFields = [
+  { fieldName: 'date', fieldType: 'Date', isDefault: true },
+  { fieldName: 'task', fieldType: 'String', isDefault: true },
+  { fieldName: 'workingHours', fieldType: 'Number', isDefault: true },
+];
+
 export default function CreateProject() {
   const [projectData, setProjectData] = useState({
     name: '',
     description: '',
-    fields: [],
+    fields: [...defaultFields],
   });
 
   const [errors, setErrors] = useState({});
@@ -32,11 +38,14 @@ export default function CreateProject() {
   const addField = () => {
     setProjectData((prev) => ({
       ...prev,
-      fields: [...prev.fields, { fieldName: '', fieldType: 'String' }],
+      fields: [...prev.fields, { fieldName: '', fieldType: 'String', isDefault: false }],
     }));
   };
 
   const removeField = (index) => {
+    const field = projectData.fields[index];
+    if (field.isDefault) return; // prevent deleting default fields
+
     const updatedFields = [...projectData.fields];
     updatedFields.splice(index, 1);
     setProjectData((prev) => ({ ...prev, fields: updatedFields }));
@@ -89,7 +98,7 @@ export default function CreateProject() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Project Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Project Name</label>
+          <label className="block text-sm font-medium text-gray-1000">Project Name</label>
           <input
             type="text"
             name="name"
@@ -97,7 +106,7 @@ export default function CreateProject() {
             onChange={handleChange}
             placeholder="Enter project name"
             className={`mt-2 w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-          />
+         />
           {errors.name && (
             <p className="text-red-500 text-sm mt-1">{errors.name}</p>
           )}
@@ -105,7 +114,7 @@ export default function CreateProject() {
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <label className="block text-sm font-medium text-gray-1000">Description</label>
           <textarea
             name="description"
             value={projectData.description}
@@ -118,7 +127,7 @@ export default function CreateProject() {
 
         {/* Dynamic Fields */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Project Fields</label>
+          <label className="block text-sm font-medium text-gray-1000 mb-2">Project Fields</label>
 
           {projectData.fields.map((field, index) => (
             <div key={index} className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -129,7 +138,11 @@ export default function CreateProject() {
                   placeholder="Field Name"
                   value={field.fieldName}
                   onChange={(e) => handleFieldChange(index, e)}
-                  className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldName_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}`}
+                 className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2
+                  ${errors[`fieldName_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}
+                  ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'}
+                `}
+                disabled={field.isDefault} 
                 />
                 {errors[`fieldName_${index}`] && (
                   <p className="text-red-500 text-sm mt-1">
@@ -143,7 +156,11 @@ export default function CreateProject() {
                   name="fieldType"
                   value={field.fieldType}
                   onChange={(e) => handleFieldChange(index, e)}
-                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldType_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}`}
+                 className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2
+                  ${errors[`fieldName_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}
+                  ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'}
+                `}
+                disabled={field.isDefault} // prevent changing type of default fields
                 >
                   <option value="String">String</option>
                   <option value="Number">Number</option>
@@ -157,13 +174,15 @@ export default function CreateProject() {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => removeField(index)}
-                className="text-red-500 hover:text-red-700 mt-1 sm:mt-0"
-              >
-                <Trash2 size={14} className="mr-1" />
-              </button>
+              {!field.isDefault && (
+                <button
+                  type="button"
+                  onClick={() => removeField(index)}
+                  className="text-red-500 hover:text-red-1000 mt-1 sm:mt-0"
+                >
+                  <Trash2 size={14} className="mr-1" />
+                </button>
+              )}
             </div>
           ))}
 

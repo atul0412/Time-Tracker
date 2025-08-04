@@ -21,7 +21,10 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use(cors({
-  origin: '*'
+  origin: (origin, callback) => {
+    callback(null, origin || '*'); // Reflect the request origin
+  },
+  credentials: true
 }));
 
 
