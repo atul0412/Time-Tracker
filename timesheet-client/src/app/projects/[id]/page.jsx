@@ -34,14 +34,20 @@ export default function ProjectDetailsPage() {
 
   const [userRole, setUserRole] = useState('');
 
-  const groupByDate = (entries) => {
-    return entries.reduce((acc, entry) => {
-      const date = new Date(entry.date).toLocaleDateString();
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(entry);
-      return acc;
-    }, {});
-  };
+const groupByDate = (entries) => {
+  return entries.reduce((acc, entry) => {
+    const date = new Date(entry.date).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }); 
+    
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(entry);
+    return acc;
+  }, {});
+};
+
 
 
   useEffect(() => {
@@ -318,43 +324,79 @@ export default function ProjectDetailsPage() {
 
       {/* Timesheet Edit Modal */}
       {editingEntry && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
-            <h3 className="text-2xl font-bold text-purple-800 mb-6">Edit Timesheet Entry</h3>
+  <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
+      <h3 className="text-2xl font-bold text-purple-800 mb-6">Edit Timesheet Entry</h3>
 
-            <form className="space-y-4">
-              {Object.entries(formData).map(([key, value]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
-                    {key.replace(/_/g, ' ')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={formData[key]}
-                    onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                  />
-                </div>
-              ))}
-            </form>
-
-            <div className="flex justify-end space-x-4 mt-8">
-              <button
-                onClick={closeEditModal}
-                className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSubmit}
-                className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
-              >
-                Update
-              </button>
-            </div>
+      <form className="space-y-4">
+        {/* Read-only formatted date */}
+        {formData.date && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Entry Date</label>
+            <input
+              type="text"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100"
+              value={new Date(formData.date).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+              readOnly
+            />
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Editable fields (excluding 'date') */}
+        {Object.entries(formData).map(([key, value]) => {
+          if (key === 'date') return null;
+
+          const inputType =
+            typeof value === 'number' || key.toLowerCase().includes('hours')
+              ? 'number'
+              : key.toLowerCase().includes('date')
+                ? 'date'
+                : 'text';
+
+
+          return (
+            <div key={key}>
+              <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                {key.replace(/_/g, ' ')}
+              </label>
+              <input
+                type={inputType}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                value={value}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
+                  }))
+                }
+              />
+            </div>
+          );
+        })}
+      </form>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-4 mt-8">
+        <button
+          onClick={closeEditModal}
+          className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleEditSubmit}
+          className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
+        >
+          Update
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Timesheet Add Modal */}
       {addingEntry && (
@@ -364,7 +406,7 @@ export default function ProjectDetailsPage() {
             <form className="space-y-4">
               {project.fields?.map((field) => (
                 <div key={field.fieldName}>
-                  <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                  <label className="block text-sm font-medium text-gray-1000 capitalize mb-1 ">
                     {field.fieldName.replace(/_/g, ' ')}
                   </label>
                   <input
@@ -375,8 +417,12 @@ export default function ProjectDetailsPage() {
                           ? 'date'
                           : 'text'
                     }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={addFormData[field.fieldName]}
+                    className="w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldType_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800"
+                    value={
+                      field.fieldType === 'Date' && !addFormData[field.fieldName]
+                        ? new Date().toISOString().split('T')[0]
+                        : addFormData[field.fieldName] || ''
+                    }
                     onChange={(e) =>
                       setAddFormData((prev) => ({
                         ...prev,

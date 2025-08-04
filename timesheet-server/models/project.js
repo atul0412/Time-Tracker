@@ -30,11 +30,16 @@ const projectSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
-    fields: [fieldSchema]
+    fields: {
+      type: [fieldSchema],
+      default: () => [
+        { name: 'date', fieldType: 'date' },
+        { name: 'task', fieldType: 'text' },
+        { name: 'workingHours', fieldType: 'number' }
+      ]
+    }
   },
   { timestamps: true }
 );
-
-
 const Project = mongoose.model('Project', projectSchema);
 export default Project;
