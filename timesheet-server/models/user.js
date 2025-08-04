@@ -1,3 +1,5 @@
+
+
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema(
@@ -23,12 +25,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['admin', 'user'],
       default: 'user',
-    }
+    },
   },
   {
     timestamps: true,
   }
 );
 
-const User = mongoose.model('User', userSchema);
+// ✅ Check if the model already exists to avoid OverwriteModelError
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+
 export default User;
