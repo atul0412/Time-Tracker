@@ -35,11 +35,13 @@ const projectSchema = new mongoose.Schema(
       default: () => [
         { name: 'date', fieldType: 'date' },
         { name: 'task', fieldType: 'text' },
-        { name: 'workingHours', fieldType: 'number' }
+        { name: 'workingHours', fieldType: 'number' },
+        { name: 'Frontend/Backend', fieldType: 'text' } 
       ]
     }
   },
   { timestamps: true }
 );
+
 const Project = mongoose.model('Project', projectSchema);
 export default Project;

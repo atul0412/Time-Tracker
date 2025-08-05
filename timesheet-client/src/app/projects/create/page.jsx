@@ -10,7 +10,9 @@ const defaultFields = [
   { fieldName: 'date', fieldType: 'Date', isDefault: true },
   { fieldName: 'task', fieldType: 'String', isDefault: true },
   { fieldName: 'workingHours', fieldType: 'Number', isDefault: true },
+  { fieldName: 'Frontend/Backend', fieldType: 'String', isDefault: true } // ✅ New field added
 ];
+
 
 export default function CreateProject() {
   const [projectData, setProjectData] = useState({
@@ -106,7 +108,7 @@ export default function CreateProject() {
             onChange={handleChange}
             placeholder="Enter project name"
             className={`mt-2 w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-         />
+          />
           {errors.name && (
             <p className="text-red-500 text-sm mt-1">{errors.name}</p>
           )}
@@ -138,11 +140,11 @@ export default function CreateProject() {
                   placeholder="Field Name"
                   value={field.fieldName}
                   onChange={(e) => handleFieldChange(index, e)}
-                 className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2
+                  className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2
                   ${errors[`fieldName_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}
                   ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'}
                 `}
-                disabled={field.isDefault} 
+                  disabled={field.isDefault}
                 />
                 {errors[`fieldName_${index}`] && (
                   <p className="text-red-500 text-sm mt-1">
@@ -154,25 +156,27 @@ export default function CreateProject() {
               <div className="w-full sm:w-48">
                 <select
                   name="fieldType"
-                  value={field.fieldType}
+                  value={field.fieldType} // fallback to empty string if undefined
                   onChange={(e) => handleFieldChange(index, e)}
-                 className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2
+                  className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2
                   ${errors[`fieldName_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800'}
-                  ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'}
-                `}
-                disabled={field.isDefault} // prevent changing type of default fields
+                  ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'} `}
+                  disabled={field.isDefault} // prevent changing type of default fields
                 >
+                  <option value="" disabled>Choose a Field Type</option>
                   <option value="String">String</option>
                   <option value="Number">Number</option>
                   <option value="Date">Date</option>
                   <option value="Boolean">Boolean</option>
                 </select>
+
                 {errors[`fieldType_${index}`] && (
                   <p className="text-red-500 text-sm mt-1">
                     {errors[`fieldType_${index}`]}
                   </p>
                 )}
               </div>
+
 
               {!field.isDefault && (
                 <button

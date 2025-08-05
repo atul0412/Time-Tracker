@@ -6,6 +6,7 @@ import api from '../../../lib/axios';
 import toast from 'react-hot-toast';
 import { Pencil, Trash2 } from 'lucide-react';
 import { exportTimesheetToExcel } from '../../../lib/exportToExcel';
+import { formatDateToReadable } from '../../../lib/dateFormate';
 
 
 export default function ProjectDetailsPage() {
@@ -34,19 +35,18 @@ export default function ProjectDetailsPage() {
 
   const [userRole, setUserRole] = useState('');
 
-const groupByDate = (entries) => {
-  return entries.reduce((acc, entry) => {
-    const date = new Date(entry.date).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }); 
-    
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(entry);
-    return acc;
-  }, {});
-};
+  // At the top of your component (before return)
+  const [errors, setErrors] = useState({});
+
+
+  const groupByDate = (entries) => {
+    return entries.reduce((acc, entry) => {
+      const date = formatDateToReadable(entry.date);
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(entry);
+      return acc;
+    }, {});
+  };
 
 
 
@@ -78,6 +78,23 @@ const groupByDate = (entries) => {
     if (id) fetchProjectAndTimesheets();
     loadUserRole();
   }, [id]);
+
+
+  useEffect(() => {
+  if (addingEntry && project?.fields) {
+    const initialData = {};
+
+    project.fields.forEach((field) => {
+      if (field.fieldType === 'Date') {
+        initialData[field.fieldName] = new Date().toISOString().split('T')[0];
+      } else {
+        initialData[field.fieldName] = '';
+      }
+    });
+
+    setAddFormData(initialData);
+  }
+}, [addingEntry, project]);
 
 
   const handleDelete = async () => {
@@ -241,11 +258,19 @@ const groupByDate = (entries) => {
                       <tbody className="bg-white divide-y divide-gray-100">
                         {entries.map((entry) => (
                           <tr key={entry._id}>
-                            {allKeys.map((key) => (
-                              <td key={key} className="px-4 py-2 text-gray-600">
-                                {entry.data?.[key]?.toString() || '-'}
-                              </td>
-                            ))}
+                            {allKeys.map((key) => {
+                              const value = entry.data?.[key];
+                              const displayValue =
+                                key.toLowerCase().includes('date') && value
+                                  ? formatDateToReadable(value)
+                                  : value?.toString() || '-';
+
+                              return (
+                                <td key={key} className="px-4 py-2 text-gray-600">
+                                  {displayValue}
+                                </td>
+                              );
+                            })}
                             <td className="px-4 py-2 space-x-2">
                               <button
                                 onClick={() => openEditModal(entry)}
@@ -271,28 +296,42 @@ const groupByDate = (entries) => {
                     {entries.map((entry) => (
                       <div
                         key={entry._id}
-                        className="border border-gray-200 rounded-xl shadow-sm bg-white overflow-hidden"
+                        className="border border-purple-300 rounded-xl shadow-sm bg-white overflow-hidden"
                       >
                         <details className="p-4 group">
-                          <summary className="cursor-pointer font-semibold text-gray-800 text-base list-none flex justify-between items-center">
+                          <summary className="cursor-pointer font-semibold text-gray-900 text-base list-none flex justify-between items-center">
                             <span>
-                              {entry.data?.['Task Details']
-                                ? entry.data['Task Details'].split(' ').slice(0, 7).join(' ') +
-                                (entry.data['Task Details'].split(' ').length > 7 ? '...' : '')
-                                : 'N/A'}
+                              {entry.data?.['task']
+                                ? entry.data['task'].split(' ').slice(0, 7).join(' ') +
+                                (entry.data['task'].split(' ').length > 7 ? '...' : '')
+                                : entry.data?.['Task']
+                                  ? entry.data['Task'].split(' ').slice(0, 7).join(' ') +
+                                  (entry.data['Task'].split(' ').length > 7 ? '...' : '')
+                                  : 'No task specified'}
                             </span>
+
                             <span className="text-sm text-purple-900 group-open:rotate-180 transition-transform">
                               ▼
                             </span>
                           </summary>
 
-                          <div className="mt-3 space-y-2 text-sm text-gray-600">
-                            {allKeys.map((key) => (
-                              <p key={key} className="flex justify-between">
-                                <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                                <span>{entry.data?.[key]?.toString() || '-'}</span>
-                              </p>
-                            ))}
+                          <div className="mt-3 space-y-2 text-sm text-gray-800">
+                            {allKeys.map((key) => {
+                              const value = entry.data?.[key];
+                              const displayValue =
+                                key.toLowerCase().includes('date') && value
+                                  ? formatDateToReadable(value)
+                                  : value?.toString() || '-';
+
+                              return (
+                                <p key={key} className="flex justify-between">
+                                  <span className="capitalize font-bold  text-black">
+                                    {key.replace(/_/g, ' ')}:
+                                  </span>
+                                  <span>{displayValue}</span>
+                                </p>
+                              );
+                            })}
 
                             <div className="mt-4 flex justify-end gap-4">
                               <button
@@ -315,6 +354,7 @@ const groupByDate = (entries) => {
                       </div>
                     ))}
                   </div>
+
                 </div>
               );
             })
@@ -324,115 +364,145 @@ const groupByDate = (entries) => {
 
       {/* Timesheet Edit Modal */}
       {editingEntry && (
-  <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
-      <h3 className="text-2xl font-bold text-purple-800 mb-6">Edit Timesheet Entry</h3>
+        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
+            <h3 className="text-2xl font-bold text-purple-800 mb-6">Edit Timesheet Entry</h3>
 
-      <form className="space-y-4">
-        {/* Read-only formatted date */}
-        {formData.date && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Entry Date</label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100"
-              value={new Date(formData.date).toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
+            <form className="space-y-4">
+              {/* Read-only formatted date */}
+              {formData.date && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Entry Date</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100"
+                    value={formatDateToReadable(formData.date)}
+                    readOnly
+                  />
+                </div>
+              )}
+
+              {/* Editable fields (excluding 'date') */}
+              {Object.entries(formData).map(([key, value]) => {
+                if (key === 'date') return null;
+
+                const inputType =
+                  typeof value === 'number' || key.toLowerCase().includes('hours')
+                    ? 'number'
+                    : key.toLowerCase().includes('date')
+                      ? 'date'
+                      : 'text';
+
+
+                return (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                      {key.replace(/_/g, ' ')}
+                    </label>
+                    <input
+                      type={inputType}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                      value={value}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                );
               })}
-              readOnly
-            />
-          </div>
-        )}
+            </form>
 
-        {/* Editable fields (excluding 'date') */}
-        {Object.entries(formData).map(([key, value]) => {
-          if (key === 'date') return null;
-
-          const inputType =
-            typeof value === 'number' || key.toLowerCase().includes('hours')
-              ? 'number'
-              : key.toLowerCase().includes('date')
-                ? 'date'
-                : 'text';
-
-
-          return (
-            <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
-                {key.replace(/_/g, ' ')}
-              </label>
-              <input
-                type={inputType}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                value={value}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
-                  }))
-                }
-              />
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-4 mt-8">
+              <button
+                onClick={closeEditModal}
+                className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSubmit}
+                className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
+              >
+                Update
+              </button>
             </div>
-          );
-        })}
-      </form>
-
-      {/* Action Buttons */}
-      <div className="flex justify-end space-x-4 mt-8">
-        <button
-          onClick={closeEditModal}
-          className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleEditSubmit}
-          className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
-        >
-          Update
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          </div>
+        </div>
+      )}
 
       {/* Timesheet Add Modal */}
       {addingEntry && (
         <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
             <h3 className="text-2xl font-bold text-purple-800 mb-6">Add Timesheet Entry</h3>
+
             <form className="space-y-4">
-              {project.fields?.map((field) => (
-                <div key={field.fieldName}>
-                  <label className="block text-sm font-medium text-gray-1000 capitalize mb-1 ">
-                    {field.fieldName.replace(/_/g, ' ')}
-                  </label>
-                  <input
-                    type={
-                      field.fieldType === 'Number'
-                        ? 'number'
-                        : field.fieldType === 'Date'
-                          ? 'date'
-                          : 'text'
-                    }
-                    className="w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldType_${index}`] ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-800"
-                    value={
-                      field.fieldType === 'Date' && !addFormData[field.fieldName]
-                        ? new Date().toISOString().split('T')[0]
-                        : addFormData[field.fieldName] || ''
-                    }
-                    onChange={(e) =>
-                      setAddFormData((prev) => ({
-                        ...prev,
-                        [field.fieldName]: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              ))}
+              {project.fields?.map((field) => {
+                const isDate = field.fieldType === 'Date';
+                const fieldValue = addFormData[field.fieldName];
+
+                const inputValue =
+                  fieldValue !== undefined
+                    ? (isDate && !fieldValue
+                      ? new Date().toISOString().split('T')[0]
+                      : fieldValue)
+                    : (isDate ? new Date().toISOString().split('T')[0] : '');
+
+                return (
+                  <div key={field.fieldName}>
+                    <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                      {field.fieldName.replace(/_/g, ' ')}
+                    </label>
+
+                    {field.fieldName === 'Frontend/Backend' ? (
+                      <select
+                        className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-purple-800'
+                          }`}
+                        value={inputValue}
+                        onChange={(e) =>
+                          setAddFormData((prev) => ({
+                            ...prev,
+                            [field.fieldName]: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Select</option>
+                        <option value="Frontend">Frontend</option>
+                        <option value="Backend">Backend</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={
+                          field.fieldType === 'Number'
+                            ? 'number'
+                            : isDate
+                              ? 'date'
+                              : 'text'
+                        }
+                        className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-purple-800'
+                          }`}
+                        value={inputValue}
+                        onChange={(e) =>
+                          setAddFormData((prev) => ({
+                            ...prev,
+                            [field.fieldName]: e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </form>
+
             <div className="flex justify-end space-x-4 mt-8">
               <button
                 onClick={closeAddModal}
@@ -451,107 +521,110 @@ const groupByDate = (entries) => {
         </div>
       )}
 
+
+
       {/* Project Edit Modal */}
-      {editingProject && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-lg">
-            <h2 className="text-2xl font-semibold text-purple-800 mb-6">Edit Project</h2>
-            <form className="space-y-6">
-              {/* Project Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Project Name</label>
-                <input
-                  type="text"
-                  className="w-full border rounded-md px-4 py-2"
-                  value={projectFormData.name}
-                  onChange={(e) => setProjectFormData((prev) => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
+      
+{addingEntry && (
+  <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
+      <h3 className="text-2xl font-bold text-purple-800 mb-6">Add Timesheet Entry</h3>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  className="w-full border rounded-md px-4 py-2"
-                  value={projectFormData.description}
-                  onChange={(e) => setProjectFormData((prev) => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
+      <form className="space-y-4">
+        {project.fields?.map((field) => {
+          const isDate = field.fieldType === 'Date';
+          const fieldValue = addFormData[field.fieldName];
 
-              {/* Fields */}
-              {projectFormData.fields?.map((field, index) => (
-                <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3">
-                  <input
-                    type="text"
-                    placeholder="Field Name"
-                    className="flex-1 border rounded-md px-4 py-2"
-                    value={field.fieldName}
-                    onChange={(e) => {
-                      const updated = [...projectFormData.fields];
-                      updated[index].fieldName = e.target.value;
-                      setProjectFormData((prev) => ({ ...prev, fields: updated }));
-                    }}
-                  />
-                  <select
-                    className="w-full sm:w-44 border rounded-md px-4 py-2"
-                    value={field.fieldType}
-                    onChange={(e) => {
-                      const updated = [...projectFormData.fields];
-                      updated[index].fieldType = e.target.value;
-                      setProjectFormData((prev) => ({ ...prev, fields: updated }));
-                    }}
-                  >
-                    <option value="String">String</option>
-                    <option value="Number">Number</option>
-                    <option value="Date">Date</option>
-                    <option value="Boolean">Boolean</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = [...projectFormData.fields];
-                      updated.splice(index, 1);
-                      setProjectFormData((prev) => ({ ...prev, fields: updated }));
-                    }}
-                    className="text-red-500 hover:text-red-700 mt-1 sm:mt-0"
-                    title="Delete Field"
-                  >
-                    <Trash2 size={14} className="mr-1" />
-                  </button>
-                </div>
-              ))}
+          const inputValue =
+            fieldValue !== undefined
+              ? (isDate && !fieldValue
+                  ? new Date().toISOString().split('T')[0]
+                  : fieldValue)
+              : (isDate ? new Date().toISOString().split('T')[0] : '');
 
-            </form>
+          return (
+            <div key={field.fieldName}>
+              <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                {field.fieldName.replace(/_/g, ' ')}
+              </label>
 
-            <div className="flex justify-end mt-6 gap-4">
-              <button
-                onClick={() => setEditingProject(false)}
-                className="px-4 py-2 bg-gray-200 rounded-md hover:bg-red-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    await api.put(`/projects/${id}`, projectFormData);
-                    toast.success('Project updated');
-                    setProject((prev) => ({
+              {field.fieldName === 'Frontend/Backend' ? (
+                <select
+                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
+                    errors?.[`fieldType_${field.fieldName}`]
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-purple-800'
+                  }`}
+                  value={inputValue}
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
                       ...prev,
-                      ...projectFormData,
-                    }));
-                    setEditingProject(false);
-                  } catch (err) {
-                    toast.error(err?.response?.data?.message || 'Failed to update project');
+                      [field.fieldName]: e.target.value,
+                    }))
                   }
-                }}
-                className="px-4 py-2 bg-purple-800 text-white rounded-md hover:bg-purple-950 transition"
-              >
-                Save Changes
-              </button>
+                >
+                  <option value="">Select</option>
+                  <option value="Frontend">Frontend</option>
+                  <option value="Backend">Backend</option>
+                </select>
+              ) : (
+                <input
+                  type={
+                    field.fieldType === 'Number'
+                      ? 'number'
+                      : isDate
+                      ? 'date'
+                      : 'text'
+                  }
+                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
+                    errors?.[`fieldType_${field.fieldName}`]
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-purple-800'
+                  }`}
+                  value={inputValue}
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: e.target.value,
+                    }))
+                  }
+                />
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </form>
+
+      <div className="flex justify-end space-x-4 mt-8">
+        <button
+          onClick={closeAddModal}
+          className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            const updatedData = { ...addFormData };
+
+            project.fields?.forEach((field) => {
+              const isDate = field.fieldType === 'Date';
+              const fieldValue = updatedData[field.fieldName];
+
+              if (isDate && (!fieldValue || fieldValue === '')) {
+                updatedData[field.fieldName] = new Date().toISOString().split('T')[0];
+              }
+            });
+
+            handleAddSubmit(updatedData); // You should update `handleAddSubmit` to accept this
+          }}
+          className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     </div>
   );
