@@ -82,21 +82,32 @@ export default function AllUsersPage() {
     }
   };
 
- const handleUserClick = async (user) => {
-  setSelectedUser(user);
-  setProjectModalOpen(true);
-  setLoadingProjects(true);
+  const handleUserClick = async (user) => {
+    setSelectedUser(user);
+    setProjectModalOpen(true);
+    setLoadingProjects(true);
 
- try {
-  const res = await api.get(`/assignProject/user/${user._id}`);
-  console.log('User assigned projects:', res.data); // 👈 Check what comes back
-  setUserProjects(Array.isArray(res.data) ? res.data : []);
-} catch (err) {
-  toast.error('Failed to fetch user projects');
-  setUserProjects([]);
-}
+    try {
+      const res = await api.get(`/assignProject/user/${user._id}`);
+      console.log('Full response:', res.data);
 
-};
+      const projects = res?.data?.data;
+      const normalizedProjects = Array.isArray(projects)
+        ? projects
+        : Array.isArray(projects?.projects)
+          ? projects.projects
+          : [];
+
+      setUserProjects(normalizedProjects);
+    } catch (err) {
+      toast.error('Failed to fetch user projects');
+      setUserProjects([]);
+    } finally {
+      setLoadingProjects(false);
+    }
+
+
+  };
 
 
   if (loading) {
@@ -259,32 +270,50 @@ export default function AllUsersPage() {
 
       {/* Project Modal */}
       {projectModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-          <div className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-xl relative">
+        <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="w-full max-w-3xl bg-white p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
+
+            {/* Close Button */}
             <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-red-500"
+              className="absolute top-3 right-3 text-gray-500 hover:text-red-500"
               onClick={() => {
                 setProjectModalOpen(false);
                 setSelectedUser(null);
                 setUserProjects([]);
               }}
             >
-              <X />
+              <X className="w-5 h-5" />
             </button>
-            <h2 className="text-2xl font-bold text-purple-950 mb-4">
+
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-purple-900 mb-6 text-center">
               Projects Assigned to {selectedUser.name}
             </h2>
 
+            {/* Loading */}
             {loadingProjects ? (
               <p className="text-gray-600 italic text-center">Loading projects...</p>
+
             ) : userProjects.length === 0 ? (
+              // No Projects
               <p className="text-gray-500 text-center italic">No projects assigned.</p>
+
             ) : (
-              <ul className="space-y-3">
+              // Project Cards Grid
+              <ul className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
                 {userProjects.map((project) => (
-                  <li key={project._id} className="border p-4 rounded shadow-sm">
-                    <p className="font-semibold text-gray-800">{project.name}</p>
-                    <p className="text-sm text-gray-500">{project.description || 'No description'}</p>
+                  <li
+                    key={project._id}
+                    className="bg-white border border-purple-200 rounded-xl p-6 shadow hover:shadow-md transition duration-300"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <h3 className="text-lg font-semibold text-purple-800">
+                        {project.project?.name || 'Untitled Project'}
+                      </h3>
+                      <p className="text-gray-600 text-sm">
+                        {project.project?.description || 'No description provided.'}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -292,6 +321,8 @@ export default function AllUsersPage() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }
