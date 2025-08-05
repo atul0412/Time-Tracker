@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Eye, EyeOff } from 'lucide-react';
 import api from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 
@@ -11,12 +11,19 @@ export default function AllUsersPage() {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     password: '',
     role: 'user',
   });
+
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userProjects, setUserProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [projectModalOpen, setProjectModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -63,7 +70,6 @@ export default function AllUsersPage() {
     }
   };
 
-
   const handleDeleteUser = async (userId) => {
     try {
       await api.delete(`/users/${userId}`);
@@ -76,6 +82,23 @@ export default function AllUsersPage() {
     }
   };
 
+ const handleUserClick = async (user) => {
+  setSelectedUser(user);
+  setProjectModalOpen(true);
+  setLoadingProjects(true);
+
+ try {
+  const res = await api.get(`/assignProject/user/${user._id}`);
+  console.log('User assigned projects:', res.data); // 👈 Check what comes back
+  setUserProjects(Array.isArray(res.data) ? res.data : []);
+} catch (err) {
+  toast.error('Failed to fetch user projects');
+  setUserProjects([]);
+}
+
+};
+
+
   if (loading) {
     return <p className="p-8 text-center text-gray-500">Loading users...</p>;
   }
@@ -85,7 +108,7 @@ export default function AllUsersPage() {
   }
 
   return (
-    <div className=" px-4 py-10 sm:px-6 lg:px-20">
+    <div className="px-4 py-10 sm:px-6 lg:px-20">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
@@ -114,7 +137,12 @@ export default function AllUsersPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.map((user, index) => (
                     <tr key={user._id || user.email || index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.name}</td>
+                      <td
+                        onClick={() => handleUserClick(user)}
+                        className="px-6 py-4 whitespace-nowrap text-sm text-purple-700 font-medium hover:underline cursor-pointer"
+                      >
+                        {user.name}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'N/A'}
@@ -137,7 +165,7 @@ export default function AllUsersPage() {
         </div>
       </div>
 
-      {/* Modal Form to Add User */}
+      {/* Add User Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
           <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl relative">
@@ -184,15 +212,24 @@ export default function AllUsersPage() {
 
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Password</label>
-                <input
-                  name="password"
-                  type="password"
-                  value={newUser.password}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800"
-                  placeholder="Enter Password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={newUser.password}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-800 pr-10"
+                    placeholder="Enter Password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-800 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -216,6 +253,42 @@ export default function AllUsersPage() {
                 {creating ? 'Adding...' : 'Add User'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Project Modal */}
+      {projectModalOpen && selectedUser && (
+        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
+          <div className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-xl relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-red-500"
+              onClick={() => {
+                setProjectModalOpen(false);
+                setSelectedUser(null);
+                setUserProjects([]);
+              }}
+            >
+              <X />
+            </button>
+            <h2 className="text-2xl font-bold text-purple-950 mb-4">
+              Projects Assigned to {selectedUser.name}
+            </h2>
+
+            {loadingProjects ? (
+              <p className="text-gray-600 italic text-center">Loading projects...</p>
+            ) : userProjects.length === 0 ? (
+              <p className="text-gray-500 text-center italic">No projects assigned.</p>
+            ) : (
+              <ul className="space-y-3">
+                {userProjects.map((project) => (
+                  <li key={project._id} className="border p-4 rounded shadow-sm">
+                    <p className="font-semibold text-gray-800">{project.name}</p>
+                    <p className="text-sm text-gray-500">{project.description || 'No description'}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       )}

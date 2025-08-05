@@ -7,11 +7,13 @@ import api from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { Eye, EyeOff } from 'lucide-react'; // ✅ icons for password toggle
+import Spinner from '../../components/spinner';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false); // ✅ password visibility toggle
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false); // ✅ loading state
   const router = useRouter();
   const { setUser } = useAuth();
 
@@ -23,6 +25,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setLoading(true); // start loading
 
     try {
       const res = await api.post('/users/login', formData);
@@ -36,6 +39,8 @@ export default function LoginPage() {
       }
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false); // stop loading
     }
   };
 
@@ -59,7 +64,7 @@ export default function LoginPage() {
               value={formData.email}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800"
-              placeholder="Enter Your Passwod"
+              placeholder="Enter Your Email"
               required
             />
           </div>
@@ -95,9 +100,16 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-purple-950 hover:bg-purple-900 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-md"
+            disabled={loading}
+            className={`w-full bg-purple-950 text-white font-semibold py-3 rounded-lg transition duration-200 shadow-md flex justify-center items-center ${
+              loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-purple-900'
+            }`}
           >
-            Sign In
+            {loading ? (
+             <Spinner/>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
       </div>

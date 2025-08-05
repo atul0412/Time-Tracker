@@ -1,56 +1,63 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import api from '../lib/axios';
-import Link from 'next/link';
-import { useAuth } from '../context/AuthContext';
-import { useRouter } from 'next/navigation'; // ✅ Import router
+import { useEffect, useState } from "react";
+import api from "../lib/axios";
+import Link from "next/link";
+import { useAuth } from "../context/AuthContext";
+import { useRouter } from "next/navigation";
+import { formatDateToReadable } from "../lib/dateFormate";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const router = useRouter(); // ✅ Initialize router
+  const { user, loading: authLoading } = useAuth(); // Get loading
+  const router = useRouter();
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const fetchProjects = async () => {
     try {
       let res;
 
-      if (user?.role === 'admin') {
-        res = await api.get('/projects/allproject');
+      if (user?.role === "admin") {
+        res = await api.get("/projects/allproject");
         setProjects(res.data.data || []);
-      } else if (user?.role === 'user') {
+      } else if (user?.role === "user") {
         res = await api.get(`/assignProject/user/${user.id}`);
         const assigned = res.data.data || [];
         const userProjects = assigned.map((item) => item.project);
         setProjects(userProjects);
       } else {
-        throw new Error('Invalid user data');
+        throw new Error("Invalid user data");
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Something went wrong');
+      setError(
+        err?.response?.data?.message || err.message || "Something went wrong"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (authLoading) return; // Wait until auth is ready
     if (!user) {
-      router.push('/login'); // ✅ Redirect to login if not authenticated
+      router.push("/login");
     } else {
       fetchProjects();
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   return (
     <div className="bg-gradient-to-br px-4 py-8 sm:px-6 lg:px-16">
-      {loading && (
+      {(loading || authLoading) && (
         <p className="text-center text-gray-500 text-lg">Loading projects...</p>
       )}
       {error && <p className="text-center text-red-600 text-lg">{error}</p>}
       {!loading && !error && projects.length === 0 && (
-        <p className="text-center text-gray-500 text-lg">No projects available.</p>
+        <p className="text-center text-gray-500 text-lg">
+          No projects available.
+        </p>
       )}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {projects.map((project) => (
@@ -66,11 +73,11 @@ export default function DashboardPage() {
                 {project.name}
               </h2>
               <p className="text-black-300 py-1">{project.description}</p>
-              <p className="text-black-300 py-1 mt-3 text-sm">
-                Created Date:{' '}
+              <p className="text-black-300 py-1 mt-3 font-semibold text-sm">
+                Created Date:{" "}
                 {project.createdAt
-                  ? new Date(project.createdAt).toLocaleDateString()
-                  : 'N/A'}
+                  ? formatDateToReadable(project.createdAt)
+                  : "N/A"}
               </p>
             </div>
           </Link>

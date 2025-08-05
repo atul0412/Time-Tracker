@@ -457,6 +457,7 @@ export default function ProjectDetailsPage() {
                     <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
                       {field.fieldName.replace(/_/g, ' ')}
                     </label>
+                    
 
                     {field.fieldName === 'Frontend/Backend' ? (
                       <select

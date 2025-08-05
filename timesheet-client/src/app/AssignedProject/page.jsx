@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
+import UserAssignmentsModal from './userAssignment';
 
 const AssignProjectPage = () => {
   const [users, setUsers] = useState([]);
@@ -10,6 +11,8 @@ const AssignProjectPage = () => {
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
   const [loading, setLoading] = useState(true);
+  
+ const [modalUser, setModalUser] = useState(null); 
 
   const fetchData = async () => {
     try {
@@ -125,40 +128,47 @@ const AssignProjectPage = () => {
             <p className="text-gray-500">No assignments found.</p>
           ) : (
             <div className="overflow-x-auto">
-  <div className="shadow-md rounded-lg border border-gray-200">
-    <table className="min-w-full table-auto text-sm text-left text-gray-700">
-      <thead className="bg-purple-100 text-purple-900 uppercase text-xs font-semibold">
-        <tr>
-          <th className="px-6 py-3 border-b">#</th>
-          <th className="px-6 py-3 border-b">User Name</th>
-          <th className="px-6 py-3 border-b">User Email</th>
-          <th className="px-6 py-3 border-b">Project Name</th>
-        </tr>
-      </thead>
-      <tbody className="bg-white divide-y divide-gray-100">
-        {assignments.map((assignment, index) => (
-          <tr
-            key={assignment._id}
-            className="hover:bg-purple-50 transition duration-150"
-          >
-            <td className="px-6 py-4 whitespace-nowrap">{index + 1}</td>
-            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">
-              {assignment.user?.name || 'N/A'}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-              {assignment.user?.email || 'N/A'}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-              {assignment.project?.name || 'N/A'}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
-
+              <div className="shadow-md rounded-lg border border-gray-200">
+                <table className="min-w-full table-auto text-sm text-left text-gray-700">
+                  <thead className="bg-purple-100 text-purple-900 uppercase text-xs font-semibold">
+                    <tr>
+                      <th className="px-6 py-3 border-b">#</th>
+                      <th className="px-6 py-3 border-b">User Name</th>
+                      <th className="px-6 py-3 border-b">User Email</th>
+                      <th className="px-6 py-3 border-b">Project Name</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {assignments.map((assignment, index) => (
+                      <tr
+                        key={assignment._id}
+                        className="hover:bg-purple-50 transition duration-150"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">{index + 1}</td>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800"
+                          onClick={() => setModalUser(assignment.user)}
+                          >
+                          {assignment.user?.name || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                          {assignment.user?.email || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                          {assignment.project?.name || 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
+            {/* ✅ Modal Component */}
+          <UserAssignmentsModal
+            isOpen={!!modalUser}
+            onClose={() => setModalUser(null)}
+            user={modalUser}
+          />
         </>
       )}
     </div>
