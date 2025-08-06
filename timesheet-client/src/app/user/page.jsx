@@ -178,7 +178,7 @@ export default function AllUsersPage() {
 
       {/* Add User Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50 ml-2 mr-2">
           <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl relative">
             <button
               className="absolute top-2 right-2 text-gray-600 hover:text-red-500"
@@ -268,56 +268,52 @@ export default function AllUsersPage() {
         </div>
       )}
 
-      {/* Project Modal */}
-      {projectModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center ml-2 mr-2 z-50">
-          <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
+   {/* Project Modal */}
+{projectModalOpen && selectedUser && (
+  <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center px-2 z-50">
+    <div className="w-full max-w-xl bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
 
-            {/* Close Button */}
-            <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-red-500"
-              onClick={() => {
-                setProjectModalOpen(false);
-                setSelectedUser(null);
-                setUserProjects([]);
-              }}
+      {/* Close Button */}
+      <button
+        className="absolute top-3 right-3 text-gray-500 hover:text-red-500"
+        onClick={() => {
+          setProjectModalOpen(false);
+          setSelectedUser(null);
+          setUserProjects([]);
+        }}
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* Title */}
+      <h2 className="text-xl sm:text-2xl font-bold text-purple-900 mb-4 sm:mb-6 text-center">
+        Projects Assigned to {selectedUser.name}
+      </h2>
+
+      {/* Loading */}
+      {loadingProjects ? (
+        <p className="text-gray-600 italic text-center">Loading projects...</p>
+      ) : userProjects.length === 0 ? (
+        <p className="text-gray-500 text-center italic">No projects assigned.</p>
+      ) : (
+        // Project Cards Grid
+        <ul className="flex flex-col gap-3 w-full sm:w-5/6 mx-auto">
+          {userProjects.map((project) => (
+            <li
+              key={project._id}
+              className="bg-white border border-purple-300 rounded-xl p-3 sm:p-4 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
             >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Title */}
-            <h2 className="text-2xl font-bold text-purple-900 mb-6 text-center">
-              Projects Assigned to {selectedUser.name}
-            </h2>
-
-            {/* Loading */}
-            {loadingProjects ? (
-              <p className="text-gray-600 italic text-center">Loading projects...</p>
-
-            ) : userProjects.length === 0 ? (
-              // No Projects
-              <p className="text-gray-500 text-center italic">No projects assigned.</p>
-
-            ) : (
-              // Project Cards Grid
-            <ul className="flex flex-col gap-2 w-75 mx-auto">
-
-                {userProjects.map((project) => (
-                  <li
-                    key={project._id}
-                    className="bg-white border border-purple-300 rounded-xl p-3 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
-                  >
-                    <h3 className="text-sm font-semibold ">
-                      {project.project?.name || 'Untitled Project'}
-                    </h3>
-                  </li>
-                ))}
-              </ul>
-
-            )}
-          </div>
-        </div>
+              <h3 className="text-sm sm:text-base font-semibold">
+                {project.project?.name || 'Untitled Project'}
+              </h3>
+            </li>
+          ))}
+        </ul>
       )}
+    </div>
+  </div>
+)}
+
 
 
     </div>

@@ -373,213 +373,220 @@ export default function ProjectDetailsPage() {
       </div>
 
       {/* Timesheet Edit Modal */}
-      {editingEntry && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
-            <h3 className="text-2xl font-bold text-purple-800 mb-6">Edit Timesheet Entry</h3>
+     {editingEntry && (
+  <div className="fixed inset-0  bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 px-4 sm:px-0">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg animate-fadeIn overflow-y-auto max-h-[70vh]">
+      <h3 className="text-2xl font-bold text-purple-800 mb-6 text-center sm:text-left">
+        Edit Timesheet Entry
+      </h3>
 
-            <form className="space-y-4">
-              {/* Read-only formatted date */}
-              {formData.date && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Entry Date</label>
-                  <input
-                    type="date"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                    value={formData.date.slice(0, 10)} // Ensure format: YYYY-MM-DD
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        date: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              )}
-
-              {/* Editable fields (excluding 'date') */}
-              {Object.entries(formData).map(([key, value]) => {
-                if (key === 'date') return null;
-
-                const isTaskField = key.toLowerCase() === 'task';
-
-                const inputType =
-                  typeof value === 'number' || key.toLowerCase().includes('hours')
-                    ? 'number'
-                    : key.toLowerCase().includes('date')
-                      ? 'date'
-                      : 'text';
-
-                return (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
-                      {key.replace(/_/g, ' ')}
-                    </label>
-
-                    {isTaskField ? (
-                      <textarea
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2 h-28 resize-none"
-                        value={value}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={inputType}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                        value={value}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </form>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 mt-8">
-              <button
-                onClick={closeEditModal}
-                className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSubmit}
-                className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
-              >
-                Update
-              </button>
-            </div>
+      <form className="space-y-4">
+        {/* Editable Date */}
+        {formData.date && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Entry Date</label>
+            <input
+              type="date"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2"
+              value={formData.date.slice(0, 10)} // Format: YYYY-MM-DD
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  date: e.target.value,
+                }))
+              }
+            />
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Editable fields (excluding 'date') */}
+        {Object.entries(formData).map(([key, value]) => {
+          if (key === 'date') return null;
+
+          const isTaskField = key.toLowerCase() === 'task';
+
+          const inputType =
+            typeof value === 'number' || key.toLowerCase().includes('hours')
+              ? 'number'
+              : key.toLowerCase().includes('date')
+              ? 'date'
+              : 'text';
+
+          return (
+            <div key={key}>
+              <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                {key.replace(/_/g, ' ')}
+              </label>
+
+              {isTaskField ? (
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 h-28 resize-none"
+                  value={value}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      [key]: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <input
+                  type={inputType}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  value={value}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
+                    }))
+                  }
+                />
+              )}
+            </div>
+          );
+        })}
+      </form>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row justify-end gap-4 mt-8">
+        <button
+          onClick={closeEditModal}
+          className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium w-full sm:w-auto"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleEditSubmit}
+          className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium w-full sm:w-auto"
+        >
+          Update
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
 
       {/* Timesheet Add Modal */}
-      {addingEntry && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
-            <h3 className="text-2xl font-bold text-purple-800 mb-6">Add Timesheet Entry</h3>
+   {addingEntry && (
+  <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg max-h-[70vh] overflow-y-auto animate-fadeIn">
+      <h3 className="text-xl sm:text-2xl font-bold text-purple-800 mb-6 text-center">
+        Add Timesheet Entry
+      </h3>
 
-            <form className="space-y-4">
-              {project.fields?.map((field) => {
-                const isDate = field.fieldType === "Date";
-                const fieldValue = addFormData[field.fieldName];
-                const isTaskField = field.fieldName.toLowerCase().includes("task");
-                console.log(isTaskField, field.fieldName)
+      <form className="space-y-4">
+        {project.fields?.map((field) => {
+          const isDate = field.fieldType === "Date";
+          const fieldValue = addFormData[field.fieldName];
+          const isTaskField = field.fieldName.toLowerCase().includes("task");
 
-                const inputValue =
-                  fieldValue !== undefined
-                    ? isDate && !fieldValue
-                      ? new Date().toISOString().split("T")[0]
-                      : fieldValue
-                    : isDate
-                      ? new Date().toISOString().split("T")[0]
-                      : "";
+          const inputValue =
+            fieldValue !== undefined
+              ? isDate && !fieldValue
+                ? new Date().toISOString().split("T")[0]
+                : fieldValue
+              : isDate
+              ? new Date().toISOString().split("T")[0]
+              : "";
 
-                return (
-                  <div key={field.fieldName}>
-                    <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
-                      {field.fieldName.replace(/_/g, " ")}
-                    </label>
+          return (
+            <div key={field.fieldName}>
+              <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
+                {field.fieldName.replace(/_/g, " ")}
+              </label>
 
-                    {field.fieldName === "Frontend/Backend" ? (
-                      <select
-                        className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
-                          ? "border-red-500 focus:ring-red-500"
-                          : "border-gray-300 focus:ring-purple-800"
-                          }`}
-                        value={inputValue}
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">Select</option>
-                        <option value="Frontend">Frontend</option>
-                        <option value="Backend">Backend</option>
-                      </select>
-                    ) : isTaskField ? (
-                      <textarea
-                        rows={4}
-                        className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
-                          ? "border-red-500 focus:ring-red-500"
-                          : "border-gray-300 focus:ring-purple-800"
-                          }`}
-                        value={inputValue}
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={
-                          field.fieldType === "Number"
-                            ? "number"
-                            : isDate
-                              ? "date"
-                              : "text"
-                        }
-                        className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
-                          ? "border-red-500 focus:ring-red-500"
-                          : "border-gray-300 focus:ring-purple-800"
-                          }`}
-                        value={inputValue}
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </form>
-
-            <div className="flex justify-end space-x-4 mt-8">
-              <button
-                onClick={closeAddModal}
-                className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddSubmit}
-                className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
-              >
-                Submit
-              </button>
+              {field.fieldName === "Frontend/Backend" ? (
+                <select
+                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
+                    errors?.[`fieldType_${field.fieldName}`]
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-purple-800"
+                  }`}
+                  value={inputValue}
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select</option>
+                  <option value="Frontend">Frontend</option>
+                  <option value="Backend">Backend</option>
+                </select>
+              ) : isTaskField ? (
+                <textarea
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded-lg shadow-sm resize-none focus:outline-none focus:ring-2 ${
+                    errors?.[`fieldType_${field.fieldName}`]
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-purple-800"
+                  }`}
+                  value={inputValue}
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <input
+                  type={
+                    field.fieldType === "Number"
+                      ? "number"
+                      : isDate
+                      ? "date"
+                      : "text"
+                  }
+                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
+                    errors?.[`fieldType_${field.fieldName}`]
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-purple-800"
+                  }`}
+                  value={inputValue}
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: e.target.value,
+                    }))
+                  }
+                />
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </form>
+
+      <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8">
+        <button
+          onClick={closeAddModal}
+          className="w-full sm:w-auto px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleAddSubmit}
+          className="w-full sm:w-auto px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 
 
 
       {/* Project Edit Modal */}
 
-  {editingProject && (
-  <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-    <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-lg">
-      <h2 className="text-2xl font-semibold text-purple-800 mb-6">Edit Project</h2>
+     {editingProject && (
+  <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 px-2">
+    <div className="bg-white rounded-xl p-6 sm:p-8 w-full max-w-lg shadow-lg overflow-y-auto max-h-[70vh]">
+      <h2 className="text-xl sm:text-2xl font-semibold text-purple-800 mb-6">Edit Project</h2>
 
       <form className="space-y-6">
         {/* Project Name */}
@@ -668,7 +675,7 @@ export default function ProjectDetailsPage() {
                       fields: updated,
                     }));
                   }}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 hover:text-red-700 self-center sm:self-auto"
                   title="Delete Field"
                 >
                   <Trash2 size={14} />
@@ -679,10 +686,10 @@ export default function ProjectDetailsPage() {
       </form>
 
       {/* Action Buttons */}
-      <div className="flex justify-end space-x-4 mt-8">
+      <div className="flex flex-col sm:flex-row justify-end sm:space-x-4 space-y-3 sm:space-y-0 mt-8">
         <button
           onClick={() => setEditingProject(false)}
-          className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
+          className="w-full sm:w-auto px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
         >
           Cancel
         </button>
@@ -702,7 +709,7 @@ export default function ProjectDetailsPage() {
               );
             }
           }}
-          className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
+          className="w-full sm:w-auto px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
         >
           Save Changes
         </button>
