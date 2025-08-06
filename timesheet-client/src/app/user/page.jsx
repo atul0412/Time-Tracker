@@ -270,8 +270,8 @@ export default function AllUsersPage() {
 
       {/* Project Modal */}
       {projectModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="w-full max-w-3xl bg-white p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center ml-2 mr-2 z-50">
+          <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
 
             {/* Close Button */}
             <button
@@ -300,23 +300,20 @@ export default function AllUsersPage() {
 
             ) : (
               // Project Cards Grid
-              <ul className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
+            <ul className="flex flex-col gap-2 w-75 mx-auto">
+
                 {userProjects.map((project) => (
                   <li
                     key={project._id}
-                    className="bg-white border border-purple-200 rounded-xl p-6 shadow hover:shadow-md transition duration-300"
+                    className="bg-white border border-purple-300 rounded-xl p-3 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
                   >
-                    <div className="flex flex-col gap-2">
-                      <h3 className="text-lg font-semibold text-purple-800">
-                        {project.project?.name || 'Untitled Project'}
-                      </h3>
-                      <p className="text-gray-600 text-sm">
-                        {project.project?.description || 'No description provided.'}
-                      </p>
-                    </div>
+                    <h3 className="text-sm font-semibold ">
+                      {project.project?.name || 'Untitled Project'}
+                    </h3>
                   </li>
                 ))}
               </ul>
+
             )}
           </div>
         </div>

@@ -7,9 +7,11 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2 } from 'lucide-react';
 import { exportTimesheetToExcel } from '../../../lib/exportToExcel';
 import { formatDateToReadable } from '../../../lib/dateFormate';
+import { useAuth } from '../../../context/AuthContext';
 
 
 export default function ProjectDetailsPage() {
+  const { user } = useAuth();
   const params = useParams();
   const id = params?.id;
   const router = useRouter();
@@ -81,20 +83,20 @@ export default function ProjectDetailsPage() {
 
 
   useEffect(() => {
-  if (addingEntry && project?.fields) {
-    const initialData = {};
+    if (addingEntry && project?.fields) {
+      const initialData = {};
 
-    project.fields.forEach((field) => {
-      if (field.fieldType === 'Date') {
-        initialData[field.fieldName] = new Date().toISOString().split('T')[0];
-      } else {
-        initialData[field.fieldName] = '';
-      }
-    });
+      project.fields.forEach((field) => {
+        if (field.fieldType === 'Date') {
+          initialData[field.fieldName] = new Date().toISOString().split('T')[0];
+        } else {
+          initialData[field.fieldName] = '';
+        }
+      });
 
-    setAddFormData(initialData);
-  }
-}, [addingEntry, project]);
+      setAddFormData(initialData);
+    }
+  }, [addingEntry, project]);
 
 
   const handleDelete = async () => {
@@ -272,19 +274,24 @@ export default function ProjectDetailsPage() {
                               );
                             })}
                             <td className="px-4 py-2 space-x-2">
-                              <button
-                                onClick={() => openEditModal(entry)}
-                                className="inline-flex items-center text-purple-800 hover:underline font-medium"
-                              >
-                                <Pencil size={16} className="mr-1" />
-                              </button>
-                              <button
-                                onClick={() => handleTimesheetDelete(entry._id)}
-                                className="inline-flex items-center text-red-600 hover:underline font-medium"
-                              >
-                                <Trash2 size={16} className="mr-1" />
-                              </button>
+                              {(user?.role === "admin" || entry.user === user?.id || entry.user?._id === user?.id) && (
+                                <>
+                                  <button
+                                    onClick={() => openEditModal(entry)}
+                                    className="inline-flex items-center text-purple-800 hover:underline font-medium"
+                                  >
+                                    <Pencil size={16} className="mr-1" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleTimesheetDelete(entry._id)}
+                                    className="inline-flex items-center text-red-600 hover:underline font-medium"
+                                  >
+                                    <Trash2 size={16} className="mr-1" />
+                                  </button>
+                                </>
+                              )}
                             </td>
+
                           </tr>
                         ))}
                       </tbody>
@@ -333,22 +340,25 @@ export default function ProjectDetailsPage() {
                               );
                             })}
 
-                            <div className="mt-4 flex justify-end gap-4">
-                              <button
-                                onClick={() => openEditModal(entry)}
-                                className="inline-flex items-center text-purple-700 text-sm font-medium hover:underline"
-                              >
-                                <Pencil size={14} className="mr-1" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleTimesheetDelete(entry._id)}
-                                className="inline-flex items-center text-red-600 text-sm font-medium hover:underline"
-                              >
-                                <Trash2 size={14} className="mr-1" />
-                                Delete
-                              </button>
-                            </div>
+                            {(user?.role === "admin" || entry.user === user?.id || entry.user?._id === user?.id) && (
+                              <div className="mt-4 flex justify-end gap-4">
+                                <button
+                                  onClick={() => openEditModal(entry)}
+                                  className="inline-flex items-center text-purple-700 text-sm font-medium hover:underline"
+                                >
+                                  <Pencil size={14} className="mr-1" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleTimesheetDelete(entry._id)}
+                                  className="inline-flex items-center text-red-600 text-sm font-medium hover:underline"
+                                >
+                                  <Trash2 size={14} className="mr-1" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+
                           </div>
                         </details>
                       </div>
@@ -374,10 +384,15 @@ export default function ProjectDetailsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Entry Date</label>
                   <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100"
-                    value={formatDateToReadable(formData.date)}
-                    readOnly
+                    type="date"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                    value={formData.date.slice(0, 10)} // Ensure format: YYYY-MM-DD
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        date: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               )}
@@ -386,6 +401,8 @@ export default function ProjectDetailsPage() {
               {Object.entries(formData).map(([key, value]) => {
                 if (key === 'date') return null;
 
+                const isTaskField = key.toLowerCase() === 'task';
+
                 const inputType =
                   typeof value === 'number' || key.toLowerCase().includes('hours')
                     ? 'number'
@@ -393,23 +410,36 @@ export default function ProjectDetailsPage() {
                       ? 'date'
                       : 'text';
 
-
                 return (
                   <div key={key}>
                     <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
                       {key.replace(/_/g, ' ')}
                     </label>
-                    <input
-                      type={inputType}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                      value={value}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
-                        }))
-                      }
-                    />
+
+                    {isTaskField ? (
+                      <textarea
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2 h-28 resize-none"
+                        value={value}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : (
+                      <input
+                        type={inputType}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                        value={value}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
+                          }))
+                        }
+                      />
+                    )}
                   </div>
                 );
               })}
@@ -434,6 +464,7 @@ export default function ProjectDetailsPage() {
         </div>
       )}
 
+
       {/* Timesheet Add Modal */}
       {addingEntry && (
         <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
@@ -442,28 +473,31 @@ export default function ProjectDetailsPage() {
 
             <form className="space-y-4">
               {project.fields?.map((field) => {
-                const isDate = field.fieldType === 'Date';
+                const isDate = field.fieldType === "Date";
                 const fieldValue = addFormData[field.fieldName];
+                const isTaskField = field.fieldName.toLowerCase().includes("task");
+                console.log(isTaskField, field.fieldName)
 
                 const inputValue =
                   fieldValue !== undefined
-                    ? (isDate && !fieldValue
-                      ? new Date().toISOString().split('T')[0]
-                      : fieldValue)
-                    : (isDate ? new Date().toISOString().split('T')[0] : '');
+                    ? isDate && !fieldValue
+                      ? new Date().toISOString().split("T")[0]
+                      : fieldValue
+                    : isDate
+                      ? new Date().toISOString().split("T")[0]
+                      : "";
 
                 return (
                   <div key={field.fieldName}>
                     <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
-                      {field.fieldName.replace(/_/g, ' ')}
+                      {field.fieldName.replace(/_/g, " ")}
                     </label>
-                    
 
-                    {field.fieldName === 'Frontend/Backend' ? (
+                    {field.fieldName === "Frontend/Backend" ? (
                       <select
                         className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-purple-800'
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-purple-800"
                           }`}
                         value={inputValue}
                         onChange={(e) =>
@@ -477,18 +511,33 @@ export default function ProjectDetailsPage() {
                         <option value="Frontend">Frontend</option>
                         <option value="Backend">Backend</option>
                       </select>
+                    ) : isTaskField ? (
+                      <textarea
+                        rows={4}
+                        className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-purple-800"
+                          }`}
+                        value={inputValue}
+                        onChange={(e) =>
+                          setAddFormData((prev) => ({
+                            ...prev,
+                            [field.fieldName]: e.target.value,
+                          }))
+                        }
+                      />
                     ) : (
                       <input
                         type={
-                          field.fieldType === 'Number'
-                            ? 'number'
+                          field.fieldType === "Number"
+                            ? "number"
                             : isDate
-                              ? 'date'
-                              : 'text'
+                              ? "date"
+                              : "text"
                         }
                         className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors?.[`fieldType_${field.fieldName}`]
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-gray-300 focus:ring-purple-800'
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-purple-800"
                           }`}
                         value={inputValue}
                         onChange={(e) =>
@@ -524,108 +573,146 @@ export default function ProjectDetailsPage() {
 
 
 
+
       {/* Project Edit Modal */}
-      
-{addingEntry && (
+
+  {editingProject && (
   <div className="fixed inset-0 bg-opacity-30 backdrop-blur flex items-center justify-center z-50">
-    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg animate-fadeIn">
-      <h3 className="text-2xl font-bold text-purple-800 mb-6">Add Timesheet Entry</h3>
+    <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-lg">
+      <h2 className="text-2xl font-semibold text-purple-800 mb-6">Edit Project</h2>
 
-      <form className="space-y-4">
-        {project.fields?.map((field) => {
-          const isDate = field.fieldType === 'Date';
-          const fieldValue = addFormData[field.fieldName];
+      <form className="space-y-6">
+        {/* Project Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+          <input
+            type="text"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+            value={projectFormData.name}
+            onChange={(e) =>
+              setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
+            }
+          />
+        </div>
 
-          const inputValue =
-            fieldValue !== undefined
-              ? (isDate && !fieldValue
-                  ? new Date().toISOString().split('T')[0]
-                  : fieldValue)
-              : (isDate ? new Date().toISOString().split('T')[0] : '');
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 h-28 resize-none"
+            value={projectFormData.description}
+            onChange={(e) =>
+              setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
+            }
+          />
+        </div>
 
-          return (
-            <div key={field.fieldName}>
+        {/* Editable Fields (excluding default fields) */}
+        {projectFormData.fields
+          ?.filter(
+            (field) =>
+              !["task", "date", "workingHours", "Frontend/Backend"].includes(
+                field.fieldName
+              )
+          )
+          .map((field, index) => (
+            <div key={index} className="space-y-2 mb-4">
               <label className="block text-sm font-medium text-gray-700 capitalize mb-1">
                 {field.fieldName.replace(/_/g, ' ')}
               </label>
 
-              {field.fieldName === 'Frontend/Backend' ? (
-                <select
-                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
-                    errors?.[`fieldType_${field.fieldName}`]
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-purple-800'
-                  }`}
-                  value={inputValue}
-                  onChange={(e) =>
-                    setAddFormData((prev) => ({
-                      ...prev,
-                      [field.fieldName]: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Select</option>
-                  <option value="Frontend">Frontend</option>
-                  <option value="Backend">Backend</option>
-                </select>
-              ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* Field Name Input */}
                 <input
-                  type={
-                    field.fieldType === 'Number'
-                      ? 'number'
-                      : isDate
-                      ? 'date'
-                      : 'text'
-                  }
-                  className={`w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
-                    errors?.[`fieldType_${field.fieldName}`]
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-purple-800'
-                  }`}
-                  value={inputValue}
-                  onChange={(e) =>
-                    setAddFormData((prev) => ({
+                  type="text"
+                  placeholder="Field Name"
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                  value={field.fieldName}
+                  onChange={(e) => {
+                    const updated = [...projectFormData.fields];
+                    updated[index].fieldName = e.target.value;
+                    setProjectFormData((prev) => ({
                       ...prev,
-                      [field.fieldName]: e.target.value,
-                    }))
-                  }
+                      fields: updated,
+                    }));
+                  }}
                 />
-              )}
+
+                {/* Field Type Selector */}
+                <select
+                  className="w-full sm:w-44 border border-gray-300 rounded-lg px-4 py-2"
+                  value={field.fieldType}
+                  onChange={(e) => {
+                    const updated = [...projectFormData.fields];
+                    updated[index].fieldType = e.target.value;
+                    setProjectFormData((prev) => ({
+                      ...prev,
+                      fields: updated,
+                    }));
+                  }}
+                >
+                  <option value="String">String</option>
+                  <option value="Number">Number</option>
+                  <option value="Date">Date</option>
+                  <option value="Boolean">Boolean</option>
+                </select>
+
+                {/* Delete Field Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = [...projectFormData.fields];
+                    updated.splice(index, 1);
+                    setProjectFormData((prev) => ({
+                      ...prev,
+                      fields: updated,
+                    }));
+                  }}
+                  className="text-red-500 hover:text-red-700"
+                  title="Delete Field"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
-          );
-        })}
+          ))}
       </form>
 
+      {/* Action Buttons */}
       <div className="flex justify-end space-x-4 mt-8">
         <button
-          onClick={closeAddModal}
+          onClick={() => setEditingProject(false)}
           className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-red-300 text-gray-700 font-medium"
         >
           Cancel
         </button>
         <button
-          onClick={() => {
-            const updatedData = { ...addFormData };
-
-            project.fields?.forEach((field) => {
-              const isDate = field.fieldType === 'Date';
-              const fieldValue = updatedData[field.fieldName];
-
-              if (isDate && (!fieldValue || fieldValue === '')) {
-                updatedData[field.fieldName] = new Date().toISOString().split('T')[0];
-              }
-            });
-
-            handleAddSubmit(updatedData); // You should update `handleAddSubmit` to accept this
+          onClick={async () => {
+            try {
+              await api.put(`/projects/${id}`, projectFormData);
+              toast.success("Project updated");
+              setProject((prev) => ({
+                ...prev,
+                ...projectFormData,
+              }));
+              setEditingProject(false);
+            } catch (err) {
+              toast.error(
+                err?.response?.data?.message || "Failed to update project"
+              );
+            }
           }}
           className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-medium"
         >
-          Submit
+          Save Changes
         </button>
       </div>
     </div>
   </div>
 )}
+
+
+
 
     </div>
   );

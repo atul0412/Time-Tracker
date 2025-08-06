@@ -39,14 +39,18 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    if (authLoading) return; // Wait until auth is ready
-    if (!user) {
-      router.push("/login");
-    } else {
-      fetchProjects();
-    }
-  }, [user, authLoading]);
+useEffect(() => {
+  if (!authLoading && !user) {
+    router.push("/login");
+  }
+}, [authLoading, user]);
+
+useEffect(() => {
+  if (!authLoading && user) {
+    fetchProjects();
+  }
+}, [authLoading, user]);
+
 
   return (
     <div className="bg-gradient-to-br px-4 py-8 sm:px-6 lg:px-16">
