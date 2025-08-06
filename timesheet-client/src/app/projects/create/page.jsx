@@ -93,7 +93,7 @@ export default function CreateProject() {
   };
 
   return (
-<div className="max-w-xl mx-auto mt-10 px-4 sm:px-6 py-8 bg-gray-100 shadow-lg rounded-2xl">
+<div className="max-w-xl mx-auto mt-2 px-4 sm:px-6 py-8 bg-gray-100 shadow-lg rounded-2xl ">
   <h2 className="text-xl font-bold text-purple-900 mb-2">Add New Project</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Project Name */}
