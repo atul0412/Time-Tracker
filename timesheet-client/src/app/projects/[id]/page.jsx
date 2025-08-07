@@ -267,7 +267,7 @@ export default function ProjectDetailsPage() {
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={openAddModal}
-                  className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 bg-purple-800 text-white px-4 py-2 rounded-lg hover:bg-purple-900 transition-all duration-200 shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Add Entry
@@ -284,7 +284,7 @@ export default function ProjectDetailsPage() {
                         });
                         setEditingProject(true);
                       }}
-                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-all duration-200 shadow-sm"
+                      className="flex items-center gap-2 bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900 transition-all duration-200 shadow-sm"
                     >
                       <Settings className="w-4 h-4" />
                       Edit Project
@@ -293,7 +293,7 @@ export default function ProjectDetailsPage() {
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg hover:bg-red-900 transition-all duration-200 shadow-sm disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4" />
                       {deleting ? 'Deleting...' : 'Delete'}
@@ -303,7 +303,7 @@ export default function ProjectDetailsPage() {
                 
                 <button 
                   onClick={() => exportTimesheetToExcel(project, timesheets)}
-                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-900 transition-all duration-200 shadow-sm"
                 >
                   <Download className="w-4 h-4" />
                   Export
