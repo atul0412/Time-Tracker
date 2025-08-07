@@ -269,59 +269,53 @@ export default function AllUsersPage() {
       )}
 
       {/* Project Modal */}
-    {projectModalOpen && selectedUser && (
-  <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center px-2 z-50">
-    <div className="w-full max-w-xl bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
+      {projectModalOpen && selectedUser && (
+        <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center px-2 z-50">
+          <div className="w-full max-w-xl bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
 
-      {/* Close Button */}
-      <button
-        className="absolute top-3 right-3 text-gray-500 hover:text-red-500"
-        onClick={() => {
-          setProjectModalOpen(false);
-          setSelectedUser(null);
-          setUserProjects([]);
-        }}
-      >
-        <X className="w-5 h-5" />
-      </button>
+            {/* Close Button */}
+            <button
+              className="absolute top-3 right-3 text-gray-500 hover:text-red-500"
+              onClick={() => {
+                setProjectModalOpen(false);
+                setSelectedUser(null);
+                setUserProjects([]);
+              }}
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-      {/* Title */}
-      <h2 className="text-xl sm:text-2xl font-bold text-purple-900 mb-4 sm:mb-6 text-center">
-        Projects Assigned to {selectedUser.name}
-      </h2>
+            {/* Title */}
+            <h2 className="text-xl sm:text-2xl font-bold text-purple-900 mb-4 sm:mb-6 text-center">
+              Projects Assigned to {selectedUser.name}
+            </h2>
 
-      {/* Loading */}
-      {loadingProjects ? (
-        <p className="text-gray-600 italic text-center">Loading projects...</p>
-      ) : userProjects.length === 0 ? (
-        <p className="text-gray-500 text-center italic">No projects assigned.</p>
-      ) : (
-        <ul className="flex flex-col gap-3 w-full sm:w-5/6 mx-auto">
-          {userProjects.map((projectItem) => {
-            const projectId = projectItem.project?._id;
-            const projectName = projectItem.project?.name || 'Untitled Project';
-
-            // Skip if no ID
-            if (!projectId) return null;
-
-            return (
-              <li
-                key={projectItem._id}
-                className="bg-white border border-purple-300 rounded-xl p-3 sm:p-4 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
-              >
-                <Link href={`/project/${projectId}`} passHref>
-                  <a className="block text-sm sm:text-base font-semibold hover:underline cursor-pointer">
-                    {projectName}
-                  </a>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+            {/* Loading */}
+            {loadingProjects ? (
+              <p className="text-gray-600 italic text-center">Loading projects...</p>
+            ) : userProjects.length === 0 ? (
+              <p className="text-gray-500 text-center italic">No projects assigned.</p>
+            ) : (
+              // Project Cards Grid
+              <ul className="flex flex-col gap-3 w-full sm:w-5/6 mx-auto">
+                {userProjects.map((project) => (
+                  <li
+                    key={project._id}
+                    className="bg-white border border-purple-300 rounded-xl p-3 sm:p-4 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
+                  >
+                    <Link href={`/project/${project.project?._id}`}>
+                      <h3 className="text-sm sm:text-base font-semibold hover:underline cursor-pointer">
+                        {project.project?.name || 'Untitled Project'}
+                      </h3>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
-    </div>
-  </div>
-)}
+
 
 
     </div>

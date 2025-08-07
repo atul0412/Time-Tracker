@@ -91,7 +91,7 @@ const sendResetPasswordEmail = async (to, name, url) => {
   const text = getResetPasswordTextTemplate(url);
 
   await transporter.sendMail({
-    from: `"Your App Name" <${process.env.EMAIL}>`,
+    from: `"Time-Sheet" <${process.env.EMAIL}>`,
     to,
     subject,
     text,

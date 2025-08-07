@@ -3,7 +3,8 @@ import {
   submitTimesheet,
   updateTimesheet,
   deleteTimesheet,
-  getTimesheetsByProject
+  getTimesheetsByProject,
+  getTimesheetsByUserAndProject
 } from '../controllers/timeSheetController.js';
 import { adminOnly, protect } from '../middleware/authMiddleware.js';
 
@@ -14,6 +15,10 @@ const router = express.Router();
 router.post('/create-timesheet', protect, submitTimesheet);
 
 router.get('/project/:id', getTimesheetsByProject);
+
+
+// ✅ NEW: GET /timesheets/:userId/:projectId - Get timesheets by user + project
+router.get('/:userId/:projectId', getTimesheetsByUserAndProject)
 
 // Admin-only: Update a specific timesheet
 router.put('/:id', protect,  updateTimesheet);

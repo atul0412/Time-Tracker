@@ -71,3 +71,22 @@ export const deleteTimesheet = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete timesheet', error: err.message });
   }
 };
+
+// ✅ Get timesheets for a specific user and project
+export const getTimesheetsByUserAndProject = async (req, res) => {
+  try {
+    const { userId, projectId } = req.params;
+
+    const timesheets = await Timesheet.find({
+      user: userId,
+      project: projectId,
+    })
+
+    res.json(timesheets)
+  } catch (err) {
+    res.status(500).json({
+      message: 'Failed to fetch timesheets for user and project',
+      error: err.message
+    })
+  }
+}
