@@ -8,9 +8,11 @@ import { Trash2 } from 'lucide-react';
 
 const defaultFields = [
   { fieldName: 'date', fieldType: 'Date', isDefault: true },
+  { fieldName: 'developer name', fieldType: 'string', isDefault: true },
   { fieldName: 'task', fieldType: 'String', isDefault: true },
-  { fieldName: 'workingHours', fieldType: 'Number', isDefault: true },
-  { fieldName: 'Frontend/Backend', fieldType: 'String', isDefault: true }
+  { fieldName: 'EffortsHours', fieldType: 'Number', isDefault: true },
+  { fieldName: 'Frontend/Backend', fieldType: 'String', isDefault: true },
+  {}
 ];
 
 export default function CreateProject() {
@@ -93,8 +95,8 @@ export default function CreateProject() {
   };
 
   return (
-<div className="max-w-xl mx-auto mt-2 px-4 sm:px-6 py-8 bg-gray-100 shadow-lg rounded-2xl ">
-  <h2 className="text-xl font-bold text-purple-900 mb-2">Add New Project</h2>
+    <div className="max-w-xl mx-auto mt-2 px-4 sm:px-6 py-8 bg-gray-100 shadow-lg rounded-2xl ">
+      <h2 className="text-xl font-bold text-purple-900 mb-2">Add New Project</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Project Name */}
         <div>
@@ -105,9 +107,8 @@ export default function CreateProject() {
             value={projectData.name}
             onChange={handleChange}
             placeholder="Enter project name"
-            className={`mt-2 w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 ${
-              errors.name ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`mt-2 w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-800 ${errors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
@@ -130,66 +131,68 @@ export default function CreateProject() {
           <label className="block text-sm font-medium text-gray-800 mb-2">Project Fields</label>
 
           {projectData.fields.map((field, index) => (
-            <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-              {/* Field Name */}
-              <div className="flex-1">
-                <input
-                  type="text"
-                  name="fieldName"
-                  placeholder="Field Name"
-                  value={field.fieldName}
-                  onChange={(e) => handleFieldChange(index, e)}
-                  className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
-                    errors[`fieldName_${index}`]
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-purple-800'
-                  } ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'}`}
-                  disabled={field.isDefault}
-                />
-                {errors[`fieldName_${index}`] && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors[`fieldName_${index}`]}
-                  </p>
+            <div key={index}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                {/* Field Name */}
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    name="fieldName"
+                    placeholder="Field Name"
+                    value={field.fieldName}
+                    onChange={(e) => handleFieldChange(index, e)}
+                    className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldName_${index}`]
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-purple-800'
+                      } ${field.isDefault ? 'text-gray-500 bg-gray-100 cursor-not-allowed' : 'text-black'}`}
+                    disabled={field.isDefault}
+                  />
+                  {errors[`fieldName_${index}`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors[`fieldName_${index}`]}
+                    </p>
+                  )}
+                </div>
+
+                {/* Field Type */}
+                <div className="w-full sm:w-44">
+                  <select
+                    name="fieldType"
+                    value={field.fieldType}
+                    onChange={(e) => handleFieldChange(index, e)}
+                    className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${errors[`fieldType_${index}`]
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-purple-800'
+                      } ${field.isDefault ? 'text-gray-500 bg-gray-100 cursor-not-allowed' : 'text-black'}`}
+                    disabled={field.isDefault}
+                  >
+                    <option value="String">String</option>
+                    <option value="Number">Number</option>
+                    <option value="Date">Date</option>
+                    <option value="Boolean">Boolean</option>
+                  </select>
+                  {errors[`fieldType_${index}`] && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors[`fieldType_${index}`]}
+                    </p>
+                  )}
+                </div>
+
+                {/* Remove Button */}
+                {!field.isDefault && (
+                  <button
+                    type="button"
+                    onClick={() => removeField(index)}
+                    className="text-red-500 hover:text-red-700 mt-1 sm:mt-0"
+                    title="Remove Field"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 )}
               </div>
 
-              {/* Field Type */}
-              <div className="w-full sm:w-44">
-                <select
-                  name="fieldType"
-                  value={field.fieldType}
-                  onChange={(e) => handleFieldChange(index, e)}
-                  className={`w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 ${
-                    errors[`fieldType_${index}`]
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-purple-800'
-                  } ${field.isDefault ? 'text-gray-600 bg-gray-100 cursor-not-allowed' : 'text-black'}`}
-                  disabled={field.isDefault}
-                >
-                  <option value="">Choose a Field Type</option>
-                  <option value="String">String</option>
-                  <option value="Number">Number</option>
-                  <option value="Date">Date</option>
-                  <option value="Boolean">Boolean</option>
-                </select>
-                {errors[`fieldType_${index}`] && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors[`fieldType_${index}`]}
-                  </p>
-                )}
-              </div>
-
-              {/* Remove Button */}
-              {!field.isDefault && (
-                <button
-                  type="button"
-                  onClick={() => removeField(index)}
-                  className="text-red-500 hover:text-red-700 mt-1 sm:mt-0"
-                  title="Remove Field"
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
+              {/* Horizontal line below each field pair */}
+              <hr className="border-gray-500 my-2" />
             </div>
           ))}
 
@@ -202,6 +205,7 @@ export default function CreateProject() {
             + Add Field
           </button>
         </div>
+
 
         {/* Submit Button */}
         <button

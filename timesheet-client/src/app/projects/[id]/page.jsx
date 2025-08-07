@@ -469,14 +469,27 @@ export default function ProjectDetailsPage() {
 
 
       {/* Timesheet Add Modal */}
-   {addingEntry && (
+  {addingEntry && (
   <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg max-h-[70vh] overflow-y-auto animate-fadeIn">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fadeIn">
       <h3 className="text-xl sm:text-2xl font-bold text-purple-800 mb-6 text-center">
         Add Timesheet Entry
       </h3>
 
       <form className="space-y-4">
+        {/* Developer Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Developer Name
+          </label>
+          <input
+            type="text"
+            value={user?.name || ""}
+            readOnly
+            className="w-full px-3 py-2 border rounded-lg shadow-sm bg-gray-100 text-gray-700 focus:outline-none "
+          />
+        </div>
+
         {project.fields?.map((field) => {
           const isDate = field.fieldType === "Date";
           const fieldValue = addFormData[field.fieldName];
@@ -577,6 +590,7 @@ export default function ProjectDetailsPage() {
     </div>
   </div>
 )}
+
 
 
 

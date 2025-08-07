@@ -268,9 +268,9 @@ export default function AllUsersPage() {
         </div>
       )}
 
-   {/* Project Modal */}
-{projectModalOpen && selectedUser && (
-  <div className="fixed inset-0 bg-opacity-30 backdrop-blur-sm flex items-center justify-center px-2 z-50">
+      {/* Project Modal */}
+    {projectModalOpen && selectedUser && (
+  <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center px-2 z-50">
     <div className="w-full max-w-xl bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[90vh]">
 
       {/* Close Button */}
@@ -296,24 +296,32 @@ export default function AllUsersPage() {
       ) : userProjects.length === 0 ? (
         <p className="text-gray-500 text-center italic">No projects assigned.</p>
       ) : (
-        // Project Cards Grid
         <ul className="flex flex-col gap-3 w-full sm:w-5/6 mx-auto">
-          {userProjects.map((project) => (
-            <li
-              key={project._id}
-              className="bg-white border border-purple-300 rounded-xl p-3 sm:p-4 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
-            >
-              <h3 className="text-sm sm:text-base font-semibold">
-                {project.project?.name || 'Untitled Project'}
-              </h3>
-            </li>
-          ))}
+          {userProjects.map((projectItem) => {
+            const projectId = projectItem.project?._id;
+            const projectName = projectItem.project?.name || 'Untitled Project';
+
+            // Skip if no ID
+            if (!projectId) return null;
+
+            return (
+              <li
+                key={projectItem._id}
+                className="bg-white border border-purple-300 rounded-xl p-3 sm:p-4 shadow hover:shadow-md transition duration-300 text-gray-800 text-center"
+              >
+                <Link href={`/project/${projectId}`} passHref>
+                  <a className="block text-sm sm:text-base font-semibold hover:underline cursor-pointer">
+                    {projectName}
+                  </a>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
   </div>
 )}
-
 
 
     </div>
