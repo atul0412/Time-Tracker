@@ -79,11 +79,13 @@ const AssignProjectPage = () => {
     }
   };
 
-  // ✅ Only include assignments with a valid project
-  const activeAssignments = assignments.filter(a => a.project && a.project._id);
+  // ✅ Only include assignments where BOTH user and project still exist
+  const activeAssignments = assignments.filter(
+    (a) => a.user && a.user._id && a.project && a.project._id
+  );
 
   // Search filter
-  const filteredAssignments = activeAssignments.filter(assignment => {
+  const filteredAssignments = activeAssignments.filter((assignment) => {
     const matchesSearch = 
       assignment.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assignment.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,7 +152,7 @@ const AssignProjectPage = () => {
               </div>
             </div>
 
-            {/* ✅ Active Assignments now counts only those with a valid project */}
+            {/* ✅ Active Assignments count now checks both user and project */}
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active Assignments</p>

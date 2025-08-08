@@ -19,6 +19,7 @@ import {
 
 const defaultFields = [
   { fieldName: 'date', fieldType: 'Date', isDefault: true },
+  { fieldName: 'Developer Name', fieldType: 'String', isDefault: true },
   { fieldName: 'task', fieldType: 'String', isDefault: true },
   { fieldName: 'Effort Hours', fieldType: 'Number', isDefault: true },
   { fieldName: 'Frontend/Backend', fieldType: 'String', isDefault: true },
