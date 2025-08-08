@@ -36,9 +36,11 @@ export default function ProjectDetailsPage() {
 
   const [editingEntry, setEditingEntry] = useState(null);
   const [formData, setFormData] = useState({});
+  const [editLoading, setEditLoading] = useState(false); // Loading spinner for edit modal
 
   const [addingEntry, setAddingEntry] = useState(false);
   const [addFormData, setAddFormData] = useState({});
+  const [addLoading, setAddLoading] = useState(false); // Loading spinner for add modal
 
   const [editingProject, setEditingProject] = useState(false);
   const [projectFormData, setProjectFormData] = useState({
@@ -46,6 +48,7 @@ export default function ProjectDetailsPage() {
     description: '',
     fields: [],
   });
+  const [editProjectLoading, setEditProjectLoading] = useState(false); // Loading spinner for edit project modal
 
   const [userRole, setUserRole] = useState('');
   const [errors, setErrors] = useState({});
@@ -67,7 +70,11 @@ export default function ProjectDetailsPage() {
           api.get(`/timesheets/project/${id}`),
         ]);
         setProject(projectRes.data.data || projectRes.data);
-        setTimesheets(timesheetRes.data || []);
+        const sortedTimesheets = (timesheetRes.data || []).sort(
+          (a, b) => new Date(a.data?.date) - new Date(b.data?.date)
+        );
+        setTimesheets(sortedTimesheets);
+        console.log(sortedTimesheets);
       } catch (err) {
         setError(err?.response?.data?.message || 'Failed to load project or timesheets');
       } finally {
@@ -141,6 +148,7 @@ export default function ProjectDetailsPage() {
 
   const handleEditSubmit = async () => {
     try {
+      setEditLoading(true);
       await api.put(`/timesheets/${editingEntry._id}`, { data: formData });
       toast.success('Timesheet updated');
       setTimesheets((prev) =>
@@ -149,6 +157,8 @@ export default function ProjectDetailsPage() {
       closeEditModal();
     } catch (err) {
       toast.error('Failed to update timesheet');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -168,6 +178,7 @@ export default function ProjectDetailsPage() {
 
   const handleAddSubmit = async () => {
     try {
+      setAddLoading(true);
       const res = await api.post(`/timesheets/create-timesheet`, {
         project: id,
         data: addFormData,
@@ -177,6 +188,8 @@ export default function ProjectDetailsPage() {
       closeAddModal();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to add timesheet');
+    } finally {
+      setAddLoading(false);
     }
   };
 
@@ -565,16 +578,22 @@ export default function ProjectDetailsPage() {
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
                 onClick={closeEditModal}
+                disabled={editLoading}
                 className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleEditSubmit}
+                disabled={editLoading}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
               >
-                <Save className="w-4 h-4" />
-                Update Entry
+                {editLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {editLoading ? 'Updating...' : 'Update Entry'}
               </button>
             </div>
           </div>
@@ -680,16 +699,22 @@ export default function ProjectDetailsPage() {
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
                 onClick={closeAddModal}
+                disabled={addLoading}
                 className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddSubmit}
+                disabled={addLoading}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" />
-                Add Entry
+                {addLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {addLoading ? 'Adding...' : 'Add Entry'}
               </button>
             </div>
           </div>
@@ -797,6 +822,7 @@ export default function ProjectDetailsPage() {
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button
                 onClick={() => setEditingProject(false)}
+                disabled={editProjectLoading}
                 className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Cancel
@@ -804,6 +830,7 @@ export default function ProjectDetailsPage() {
               <button
                 onClick={async () => {
                   try {
+                    setEditProjectLoading(true);
                     await api.put(`/projects/${id}`, projectFormData);
                     toast.success("Project updated");
                     setProject((prev) => ({
@@ -815,12 +842,19 @@ export default function ProjectDetailsPage() {
                     toast.error(
                       err?.response?.data?.message || "Failed to update project"
                     );
+                  } finally {
+                    setEditProjectLoading(false);
                   }
                 }}
+                disabled={editProjectLoading}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
               >
-                <Save className="w-4 h-4" />
-                Save Changes
+                {editProjectLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {editProjectLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

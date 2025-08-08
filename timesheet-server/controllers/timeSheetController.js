@@ -25,7 +25,7 @@ export const getTimesheetsByProject = async (req, res) => {
 
    
 
-    const timesheets = await Timesheet.find(query).populate('user', 'name email');
+    const timesheets = await Timesheet.find(query).populate('user', 'name email').sort({ 'data.Date': -1 });
 
     res.json(timesheets);
   } catch (err) {
