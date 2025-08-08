@@ -82,6 +82,58 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete user', error: err.message });
   }
 };
+// ✅ Update user details
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params; // user ID from URL
+    const { name, email, password, role } = req.body;
+
+    // Check permissions
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    if (req.user.role !== 'admin' && req.user.userId !== id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Find user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update fields if provided
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    // Only admin can update role
+    if (role && req.user.role === 'admin') {
+      user.role = role;
+    }
+
+    // If password provided, hash it
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 12);
+      user.password = hashedPassword;
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error('Update User Error:', err);
+    res.status(500).json({ message: 'Failed to update user', error: err.message });
+  }
+};
+
 
 // Forgot password
 

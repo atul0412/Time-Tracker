@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Calendar, Filter, Clock, X } from 'lucide-react'
 import api from '../../lib/axios'
 
 export default function ReportPage() {
@@ -16,6 +17,14 @@ export default function ReportPage() {
     const [loadingProjects, setLoadingProjects] = useState(false)
     const [errorProjects, setErrorProjects] = useState('')
     const [timesheetsLoading, setTimesheetsLoading] = useState(false)
+
+    // Date filter states
+    const [dateFilter, setDateFilter] = useState('all')
+    const [customDateRange, setCustomDateRange] = useState({
+        startDate: '',
+        endDate: ''
+    })
+    const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
 
     // Fetch all users on mount
     useEffect(() => {
@@ -105,13 +114,59 @@ export default function ReportPage() {
         fetchTimesheets()
     }, [viewMode, selectedUser?._id, selectedProject?._id])
 
-    const filteredTimesheets = timesheets.filter(ts => {
-        if (viewMode === 'user') {
-            return (
-                ts.user === selectedUser?._id &&
-                ts.data?.[' Developer name']?.trim() === selectedUser?.name?.trim()
-            )
+    // Date filtering logic
+    const getDateRange = (filterType) => {
+        const today = new Date()
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        
+        switch (filterType) {
+            case 'today':
+                return {
+                    start: startOfDay,
+                    end: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1)
+                }
+            case 'weekly':
+                const startOfWeek = new Date(startOfDay)
+                startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay())
+                const endOfWeek = new Date(startOfWeek)
+                endOfWeek.setDate(startOfWeek.getDate() + 7)
+                return { start: startOfWeek, end: endOfWeek }
+            case 'monthly':
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
+                return { start: startOfMonth, end: endOfMonth }
+            case 'custom':
+                if (customDateRange.startDate && customDateRange.endDate) {
+                    return {
+                        start: new Date(customDateRange.startDate),
+                        end: new Date(customDateRange.endDate + 'T23:59:59')
+                    }
+                }
+                return null
+            default:
+                return null
         }
+    }
+
+    const filteredTimesheets = timesheets.filter(ts => {
+        // Existing user filter
+        if (viewMode === 'user') {
+            const userMatch = ts.user === selectedUser?._id &&
+                ts.data?.[' Developer name']?.trim() === selectedUser?.name?.trim()
+            if (!userMatch) return false
+        }
+
+        // Date filter
+        if (dateFilter !== 'all') {
+            const dateRange = getDateRange(dateFilter)
+            if (dateRange) {
+                const entryDate = new Date(ts.data.date)
+                if (entryDate < dateRange.start || entryDate > dateRange.end) {
+                    return false
+                }
+            }
+        }
+
         return true
     })
 
@@ -122,8 +177,45 @@ export default function ReportPage() {
 
     const uniqueDevelopers = [...new Set(filteredTimesheets.map(ts => ts.data[' Developer name']))].length
 
+    const handleDateFilterChange = (filterType) => {
+        setDateFilter(filterType)
+        if (filterType === 'custom') {
+            setShowCustomDatePicker(true)
+        } else {
+            setShowCustomDatePicker(false)
+            setCustomDateRange({ startDate: '', endDate: '' })
+        }
+    }
+
+    const applyCustomDateRange = () => {
+        if (customDateRange.startDate && customDateRange.endDate) {
+            setDateFilter('custom')
+            setShowCustomDatePicker(false)
+        }
+    }
+
+    const clearCustomDateRange = () => {
+        setCustomDateRange({ startDate: '', endDate: '' })
+        setDateFilter('all')
+        setShowCustomDatePicker(false)
+    }
+
+    const getFilterLabel = () => {
+        switch (dateFilter) {
+            case 'today': return 'Today'
+            case 'weekly': return 'This Week'
+            case 'monthly': return 'This Month'
+            case 'custom': 
+                if (customDateRange.startDate && customDateRange.endDate) {
+                    return `${new Date(customDateRange.startDate).toLocaleDateString()} - ${new Date(customDateRange.endDate).toLocaleDateString()}`
+                }
+                return 'Custom Range'
+            default: return 'All Time'
+        }
+    }
+
     return (
-        <div className="min-h-screen py-8">
+        <div className="min-h-screen bg-gradient-to-br  py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-8">
@@ -142,7 +234,7 @@ export default function ReportPage() {
                         Report View Mode
                     </h2>
                     
-                    <div className="flex space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
                         <label className="flex items-center cursor-pointer">
                             <input
                                 type="radio"
@@ -177,7 +269,7 @@ export default function ReportPage() {
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
                             <span className="ml-2 flex items-center">
-                                <svg className="w-4 h-4 mr-1 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                                 View by Project
@@ -342,7 +434,6 @@ export default function ReportPage() {
                                                 <h3 className={`font-semibold ${isSelected ? 'text-purple-900' : 'text-gray-900'}`}>
                                                     {project.name || 'Unnamed Project'}
                                                 </h3>
-                                               
                                             </div>
                                             {isSelected && (
                                                 <svg className="w-5 h-5 text-purple-600 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -366,23 +457,125 @@ export default function ReportPage() {
                                     <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
-                                    Timesheets for "{selectedProject.name}"
+                                    <span className="hidden sm:inline">Timesheets for "{selectedProject.name}"</span>
+                                    <span className="sm:hidden">Timesheets</span>
                                 </h2>
                                 {filteredTimesheets.length > 0 && (
                                     <div className="flex flex-wrap gap-4 text-right">
                                         <div className="bg-purple-50 px-3 py-1 rounded-lg border border-purple-200">
-                                            <span className="text-sm text-purple-600">Total Hours: </span>
+                                            <span className="text-sm text-purple-600">Hours: </span>
                                             <span className="text-lg font-bold text-purple-800">{totalHours.toFixed(2)}</span>
                                         </div>
                                         {viewMode === 'project' && (
                                             <div className="bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200">
-                                                <span className="text-sm text-indigo-600">Developers: </span>
+                                                <span className="text-sm text-indigo-600">Devs: </span>
                                                 <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
                                             </div>
                                         )}
                                     </div>
                                 )}
                             </div>
+                        </div>
+
+                        {/* Date Filter Section */}
+                        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Filter className="w-5 h-5 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { value: 'all', label: 'All Time' },
+                                        { value: 'today', label: 'Today' },
+                                        { value: 'weekly', label: 'This Week' },
+                                        { value: 'monthly', label: 'This Month' },
+                                        { value: 'custom', label: 'Custom Range' }
+                                    ].map((filter) => (
+                                        <button
+                                            key={filter.value}
+                                            onClick={() => handleDateFilterChange(filter.value)}
+                                            className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all duration-200 ${
+                                                dateFilter === filter.value
+                                                    ? 'bg-purple-600 text-white border-purple-600'
+                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:text-purple-600'
+                                            }`}
+                                        >
+                                            {filter.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {dateFilter !== 'all' && (
+                                    <div className="flex items-center gap-2 text-sm text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Showing: {getFilterLabel()}</span>
+                                        <button
+                                            onClick={() => {
+                                                setDateFilter('all')
+                                                clearCustomDateRange()
+                                            }}
+                                            className="text-purple-600 hover:text-purple-800"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Custom Date Range Picker */}
+                            {showCustomDatePicker && (
+                                <div className="mt-4 p-4 bg-white border border-purple-200 rounded-lg">
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Start Date
+                                            </label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                <input
+                                                    type="date"
+                                                    value={customDateRange.startDate}
+                                                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                End Date
+                                            </label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                <input
+                                                    type="date"
+                                                    value={customDateRange.endDate}
+                                                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex gap-2 sm:flex-col sm:justify-end">
+                                            <button
+                                                onClick={applyCustomDateRange}
+                                                disabled={!customDateRange.startDate || !customDateRange.endDate}
+                                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Apply
+                                            </button>
+                                            <button
+                                                onClick={clearCustomDateRange}
+                                                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="p-0 sm:p-6">
@@ -398,9 +591,11 @@ export default function ReportPage() {
                                     </svg>
                                     <h3 className="mt-2 text-sm font-medium text-gray-900">No timesheets found</h3>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        {viewMode === 'user' 
-                                            ? 'No timesheet entries are available for this user and project combination.'
-                                            : 'No timesheet entries are available for this project.'
+                                        {dateFilter !== 'all' 
+                                            ? `No timesheet entries found for ${getFilterLabel().toLowerCase()}.`
+                                            : viewMode === 'user' 
+                                                ? 'No timesheet entries are available for this user and project combination.'
+                                                : 'No timesheet entries are available for this project.'
                                         }
                                     </p>
                                 </div>
@@ -501,6 +696,11 @@ export default function ReportPage() {
                                                 {totalHours.toFixed(2)} total hours
                                             </span>
                                         </div>
+                                        {dateFilter !== 'all' && (
+                                            <div className="mt-2 text-xs text-gray-500">
+                                                Filtered by: {getFilterLabel()}
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}

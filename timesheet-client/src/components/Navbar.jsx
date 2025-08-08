@@ -64,7 +64,7 @@ export default function Navbar() {
               </svg>
             </div>
             <span className="text-white font-bold text-xl group-hover:text-purple-200 transition-colors duration-200">
-              Time-Sheet
+              Time-Tracker
             </span>
           </Link>
 

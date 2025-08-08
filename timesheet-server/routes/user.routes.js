@@ -7,8 +7,9 @@ import {
   deleteUser,
   forgotPassword,
   resetPassword,
+  updateUser,
 } from "../controllers/userController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import { adminOnly, protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -16,6 +17,9 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.get("/getAlluser", protect, getAllUsers);
 router.delete("/:id", protect, deleteUser);
+router.put('/:id', protect, adminOnly, updateUser);
+
+
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
