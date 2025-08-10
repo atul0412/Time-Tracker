@@ -20,10 +20,7 @@ export default function ReportPage() {
 
   // Date filter states
   const [dateFilter, setDateFilter] = useState('all')
-  const [customDateRange, setCustomDateRange] = useState({
-    startDate: '',
-    endDate: ''
-  })
+  const [customDateRange, setCustomDateRange] = useState({ startDate: '', endDate: '' })
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
 
   // Fetch all users on mount
@@ -41,7 +38,7 @@ export default function ReportPage() {
     fetchUsers()
   }, [])
 
-  // Fetch assigned projects when selectedUser changes (for user view)
+  // Fetch assigned projects when selectedUser changes (user view)
   useEffect(() => {
     if (viewMode !== 'user' || !selectedUser?._id) return
 
@@ -58,7 +55,7 @@ export default function ReportPage() {
     fetchAssignedProjects()
   }, [viewMode, selectedUser?._id])
 
-  // Fetch all projects (for project view)
+  // Fetch all projects (project view)
   useEffect(() => {
     if (viewMode !== 'project') return
 
@@ -66,14 +63,11 @@ export default function ReportPage() {
       setLoadingProjects(true)
       try {
         const res = await api.get('/projects/allproject')
-        const maybeArray = Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data?.projects)
-          ? res.data.projects
-          : []
-        setProjects(maybeArray)
+        const projectsArray =
+          Array.isArray(res.data) ? res.data :
+            Array.isArray(res.data?.data) ? res.data.data :
+              Array.isArray(res.data?.projects) ? res.data.projects : []
+        setProjects(projectsArray)
       } catch (err) {
         console.error('❌ Error fetching projects:', err)
         setErrorProjects(err?.response?.data?.message || 'Failed to load projects')
@@ -84,7 +78,7 @@ export default function ReportPage() {
     fetchAllProjects()
   }, [viewMode])
 
-  // Fetch timesheets
+  // Fetch timesheets when relevant dependencies change
   useEffect(() => {
     const fetchTimesheets = async () => {
       if (viewMode === 'user') {
@@ -92,9 +86,10 @@ export default function ReportPage() {
         setTimesheetsLoading(true)
         try {
           const res = await api.get(`/timesheets/${selectedUser._id}/${selectedProject._id}`)
-          setTimesheets(res.data || [])
+          setTimesheets(Array.isArray(res.data) ? res.data : res.data?.data || [])
         } catch (err) {
           console.error('❌ Failed to fetch timesheets:', err)
+          setTimesheets([])
         } finally {
           setTimesheetsLoading(false)
         }
@@ -103,9 +98,10 @@ export default function ReportPage() {
         setTimesheetsLoading(true)
         try {
           const res = await api.get(`/timesheets/project/${selectedProject._id}`)
-          setTimesheets(res.data || [])
+          setTimesheets(Array.isArray(res.data) ? res.data : res.data?.data || [])
         } catch (err) {
           console.error('❌ Failed to fetch project timesheets:', err)
+          setTimesheets([])
         } finally {
           setTimesheetsLoading(false)
         }
@@ -122,13 +118,13 @@ export default function ReportPage() {
       case 'today':
         return {
           start: startOfDay,
-          end: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1)
+          end: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1),
         }
       case 'weekly': {
         const startOfWeek = new Date(startOfDay)
-        startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay()) // Sunday as start
+        startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay()) // Sunday start
         const endOfWeek = new Date(startOfWeek)
-        endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday as end
+        endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday end
         return { start: startOfWeek, end: endOfWeek }
       }
       case 'monthly': {
@@ -140,7 +136,7 @@ export default function ReportPage() {
         if (customDateRange.startDate && customDateRange.endDate) {
           return {
             start: new Date(customDateRange.startDate),
-            end: new Date(customDateRange.endDate + 'T23:59:59')
+            end: new Date(customDateRange.endDate + 'T23:59:59'),
           }
         }
         return null
@@ -149,24 +145,17 @@ export default function ReportPage() {
     }
   }
 
-  // Filter timesheets according to user, project, and date
+  // Filter timesheets according to view mode and date
   const filteredTimesheets = timesheets.filter((ts) => {
-    // Filter by user if in user view
+    if (!ts.data) return false
+
     if (viewMode === 'user') {
       if (!selectedUser) return false
-
-      // Trim spaces and ignore case for developer name match
-      const developerName = (ts.data?.['Developer name'] || '').trim().toLowerCase()
+      const devNameInTS = (ts.data['Developer Name'] || ts.data['Developer name'] || '').trim().toLowerCase()
       const selectedName = (selectedUser.name || '').trim().toLowerCase()
-
-      // Match both user id and developer name
-      const userIdMatch = ts.user === selectedUser._id
-      const devNameMatch = developerName === selectedName
-
-      if (!userIdMatch || !devNameMatch) return false
+      if (devNameInTS !== selectedName) return false
     }
 
-    // Filter by date
     if (dateFilter !== 'all') {
       const dateRange = getDateRange(dateFilter)
       if (dateRange) {
@@ -181,11 +170,11 @@ export default function ReportPage() {
   })
 
   const totalHours = filteredTimesheets.reduce(
-    (sum, ts) => sum + parseFloat(ts.data.workingHours || 0),
+    (sum, ts) => sum + parseFloat(ts.data?.['Effort Hours'] || ts.data?.workingHours || 0),
     0
   )
 
-  const uniqueDevelopers = [...new Set(filteredTimesheets.map(ts => ts.data['Developer name']))].length
+  const uniqueDevelopers = [...new Set(filteredTimesheets.map(ts => (ts.data['Developer Name'] || ts.data['Developer name'] || '').trim()))].length
 
   const handleDateFilterChange = (filterType) => {
     setDateFilter(filterType)
@@ -212,15 +201,21 @@ export default function ReportPage() {
 
   const getFilterLabel = () => {
     switch (dateFilter) {
-      case 'today': return 'Today'
-      case 'weekly': return 'This Week'
-      case 'monthly': return 'This Month'
+      case 'today':
+        return 'Today'
+      case 'weekly':
+        return 'This Week'
+      case 'monthly':
+        return 'This Month'
       case 'custom':
         if (customDateRange.startDate && customDateRange.endDate) {
-          return `${new Date(customDateRange.startDate).toLocaleDateString()} - ${new Date(customDateRange.endDate).toLocaleDateString()}`
+          return `${new Date(customDateRange.startDate).toLocaleDateString()} - ${new Date(
+            customDateRange.endDate,
+          ).toLocaleDateString()}`
         }
         return 'Custom Range'
-      default: return 'All Time'
+      default:
+        return 'All Time'
     }
   }
 
@@ -238,12 +233,12 @@ export default function ReportPage() {
         {/* View Mode Toggle */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            {/* ...mode SVG... */}
             <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             Report View Mode
           </h2>
-
           <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
             <label className="flex items-center cursor-pointer">
               <input
@@ -259,6 +254,7 @@ export default function ReportPage() {
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 flex items-center">
+                {/* ...user view SVG... */}
                 <svg className="w-4 h-4 mr-1 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
@@ -279,6 +275,7 @@ export default function ReportPage() {
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 flex items-center">
+                {/* ...project view SVG... */}
                 <svg className="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
@@ -297,7 +294,6 @@ export default function ReportPage() {
               </svg>
               Select User
             </h2>
-
             {loading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
@@ -317,11 +313,13 @@ export default function ReportPage() {
             ) : (
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200"
-                onChange={(e) => setSelectedUser(users.find(user => user._id === e.target.value))}
+                onChange={(e) => setSelectedUser(users.find((user) => user._id === e.target.value))}
                 value={selectedUser?._id || ''}
               >
-                <option value="" disabled>Choose a user to view their timesheets</option>
-                {users.map(user => (
+                <option value="" disabled>
+                  Choose a user to view their timesheets
+                </option>
+                {users.map((user) => (
                   <option key={user._id} value={user._id}>
                     {user.name}
                   </option>
@@ -345,7 +343,6 @@ export default function ReportPage() {
                 </span>
               )}
             </h2>
-
             {loadingProjects ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
@@ -365,11 +362,13 @@ export default function ReportPage() {
             ) : (
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200"
-                onChange={(e) => setSelectedProject(projects.find(project => project._id === e.target.value))}
+                onChange={(e) => setSelectedProject(projects.find((project) => project._id === e.target.value))}
                 value={selectedProject?._id || ''}
               >
-                <option value="" disabled>Choose a project to view timesheets</option>
-                {projects.map(project => (
+                <option value="" disabled>
+                  Choose a project to view timesheets
+                </option>
+                {projects.map((project) => (
                   <option key={project._id} value={project._id}>
                     {project.name}
                   </option>
@@ -397,7 +396,7 @@ export default function ReportPage() {
         )}
 
         {/* Selected Project Info */}
-        {selectedProject && viewMode === 'project' && (
+        {selectedProject && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
             <div className="flex items-center">
               <div className="bg-purple-100 rounded-full p-2">
@@ -412,7 +411,7 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* Assigned Projects Grid (User View Only) */}
+        {/* Assigned Projects Grid (user view only) */}
         {viewMode === 'user' && selectedUser && assignedProjects.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -424,7 +423,6 @@ export default function ReportPage() {
                 {assignedProjects.length}
               </span>
             </h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {assignedProjects.map((assigned) => {
                 const project = assigned.project || assigned
@@ -432,9 +430,7 @@ export default function ReportPage() {
                 return (
                   <div
                     key={assigned._id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                      isSelected ? 'border-purple-500 bg-purple-50 shadow-md' : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${isSelected ? 'border-purple-500 bg-purple-50 shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
                     onClick={() => setSelectedProject(project)}
                   >
                     <div className="flex items-start text-center justify-between">
@@ -456,8 +452,9 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* Timesheets Section */}
-        {selectedProject && (
+        {/* Timesheet Table (shown in BOTH views with correct selections) */}
+        {(viewMode === 'project' && selectedProject) ||
+          (viewMode === 'user' && selectedUser && selectedProject) ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -465,8 +462,12 @@ export default function ReportPage() {
                   <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  <span className="hidden sm:inline">Timesheets for "{selectedProject.name}"</span>
-                  <span className="sm:hidden">Timesheets</span>
+                  <span>
+                    Timesheets for &quot;
+                    {viewMode === 'user' && selectedUser ? selectedUser.name + ' - ' : ''}
+                    {selectedProject ? selectedProject.name : ''}
+                    &quot;
+                  </span>
                 </h2>
                 {filteredTimesheets.length > 0 && (
                   <div className="flex flex-wrap gap-4 text-right">
@@ -474,12 +475,10 @@ export default function ReportPage() {
                       <span className="text-sm text-purple-600">Hours: </span>
                       <span className="text-lg font-bold text-purple-800">{totalHours.toFixed(2)}</span>
                     </div>
-                    {viewMode === 'project' && (
-                      <div className="bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200">
-                        <span className="text-sm text-indigo-600">Devs: </span>
-                        <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
-                      </div>
-                    )}
+                    <div className="bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200">
+                      <span className="text-sm text-indigo-600">Devs: </span>
+                      <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -492,29 +491,26 @@ export default function ReportPage() {
                   <Filter className="w-5 h-5 text-gray-600" />
                   <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
                 </div>
-
                 <div className="flex flex-wrap gap-2">
                   {[
                     { value: 'all', label: 'All' },
                     { value: 'today', label: 'Today' },
                     { value: 'weekly', label: 'Week' },
                     { value: 'monthly', label: 'Monthly' },
-                    { value: 'custom', label: 'Custom Range' }
+                    { value: 'custom', label: 'Custom Range' },
                   ].map((filter) => (
                     <button
                       key={filter.value}
                       onClick={() => handleDateFilterChange(filter.value)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all duration-200 ${
-                        dateFilter === filter.value
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:text-purple-600'
-                      }`}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all duration-200 ${dateFilter === filter.value
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-purple-300 hover:text-purple-600'
+                        }`}
                     >
                       {filter.label}
                     </button>
                   ))}
                 </div>
-
                 {dateFilter !== 'all' && (
                   <div className="flex items-center gap-2 text-sm text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
                     <Clock className="w-4 h-4" />
@@ -532,8 +528,6 @@ export default function ReportPage() {
                   </div>
                 )}
               </div>
-
-              {/* Custom Date Range Picker */}
               {showCustomDatePicker && (
                 <div className="mt-4 p-4 bg-white border border-purple-200 rounded-lg">
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -544,12 +538,11 @@ export default function ReportPage() {
                         <input
                           type="date"
                           value={customDateRange.startDate}
-                          onChange={(e) => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                          onChange={(e) => setCustomDateRange((prev) => ({ ...prev, startDate: e.target.value }))}
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                         />
                       </div>
                     </div>
-
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                       <div className="relative">
@@ -557,12 +550,11 @@ export default function ReportPage() {
                         <input
                           type="date"
                           value={customDateRange.endDate}
-                          onChange={(e) => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                          onChange={(e) => setCustomDateRange((prev) => ({ ...prev, endDate: e.target.value }))}
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                         />
                       </div>
                     </div>
-
                     <div className="flex gap-2 sm:flex-col sm:justify-end">
                       <button
                         onClick={applyCustomDateRange}
@@ -582,7 +574,6 @@ export default function ReportPage() {
                 </div>
               )}
             </div>
-
             <div className="p-0 sm:p-6">
               {timesheetsLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -598,15 +589,11 @@ export default function ReportPage() {
                   <p className="mt-1 text-sm text-gray-500">
                     {dateFilter !== 'all'
                       ? `No timesheet entries found for ${getFilterLabel().toLowerCase()}.`
-                      : viewMode === 'user'
-                        ? 'No timesheet entries are available for this user and project combination.'
-                        : 'No timesheet entries are available for this project.'
-                    }
+                      : 'No timesheet entries are available for this project.'}
                   </p>
                 </div>
               ) : (
                 <>
-                  {/* Mobile scroll hint */}
                   <div className="block sm:hidden px-4 py-2 bg-purple-50 border-b border-purple-100">
                     <p className="text-xs text-purple-600 flex items-center">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -615,8 +602,6 @@ export default function ReportPage() {
                       Swipe left to see more columns
                     </p>
                   </div>
-
-                  {/* Responsive Table Container */}
                   <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
                     <div className="min-w-full">
                       <table className="w-full divide-y divide-gray-300">
@@ -634,105 +619,95 @@ export default function ReportPage() {
                             <th className="px-3 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] whitespace-nowrap">
                               Developer
                             </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] whitespace-nowrap">
+                            <th className="px-3 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] whitespace-nowrap">
                               Type
                             </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredTimesheets.map((ts, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
-                                <div className="font-medium">
-                                  {new Date(ts.data.date).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {new Date(ts.data.date).getFullYear()}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[80px]">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                  {ts.data.workingHours}h
-                                </span>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[300px]">
-                                <div className="line-clamp-2 break-words" title={ts.data.task}>
-                                  {ts.data.task}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px]">
-                                <div className="flex items-center">
-                                  <div className="bg-purple-100 rounded-full p-1 mr-2 flex-shrink-0">
-                                    <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
+                          {filteredTimesheets.map((ts, index) => {
+                            const data = ts.data || {}
+                            return (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
+                                  <div className="font-medium">
+                                    {data.date
+                                      ? new Date(data.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                      : ''}
                                   </div>
-                                  <span className="truncate">{ts.data['Developer name']}</span>
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    ts.data['Frontend/Backend'] === 'Frontend'
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-orange-100 text-orange-800'
-                                  }`}
-                                >
-                                  {ts.data['Frontend/Backend']}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                                  <div className="text-xs text-gray-500">
+                                    {data.date ? new Date(data.date).getFullYear() : ''}
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[80px]">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    {data['Effort Hours'] || data.workingHours || '0'}
+                                  </span>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[300px]">
+                                  <div className="line-clamp-2 break-words" title={data.task}>
+                                    {data.task}
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px]">
+                                  <div className="flex items-center">
+                                    <div className="bg-purple-100 rounded-full p-1 mr-2 flex-shrink-0">
+                                      <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      </svg>
+                                    </div>
+                                    <span className="truncate">{data['Developer Name'] || data['Developer name']}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${data['Frontend/Backend'] === 'Frontend'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-orange-100 text-orange-800'
+                                    }`}>
+                                    {data['Frontend/Backend']}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
-
                   {/* Mobile table summary */}
                   <div className="block sm:hidden px-4 py-3 bg-gray-50 border-t border-gray-200">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">{filteredTimesheets.length} entries</span>
                       <span className="font-medium text-purple-600">{totalHours.toFixed(2)} total hours</span>
                     </div>
-                    {dateFilter !== 'all' && (
-                      <div className="mt-2 text-xs text-gray-500">Filtered by: {getFilterLabel()}</div>
-                    )}
+                    {dateFilter !== 'all' && <div className="mt-2 text-xs text-gray-500">Filtered by: {getFilterLabel()}</div>}
                   </div>
                 </>
               )}
             </div>
           </div>
-        )}
+        ) : null}
 
       </div>
-
       {/* Custom scrollbar styles */}
       <style jsx>{`
         .scrollbar-thin {
           scrollbar-width: thin;
           scrollbar-color: rgba(147, 51, 234, 0.3) rgba(243, 244, 246, 1);
         }
-
         .scrollbar-thin::-webkit-scrollbar {
           height: 8px;
         }
-
         .scrollbar-thin::-webkit-scrollbar-track {
           background: rgba(243, 244, 246, 1);
         }
-
         .scrollbar-thin::-webkit-scrollbar-thumb {
           background: rgba(147, 51, 234, 0.3);
           border-radius: 4px;
         }
-
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
           background: rgba(147, 51, 234, 0.5);
         }
-
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;
