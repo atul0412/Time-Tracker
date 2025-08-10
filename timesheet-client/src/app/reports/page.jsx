@@ -77,7 +77,6 @@ export default function ReportPage() {
     }
     fetchAllProjects()
   }, [viewMode])
-
   // Fetch timesheets when relevant dependencies change
   useEffect(() => {
     const fetchTimesheets = async () => {
