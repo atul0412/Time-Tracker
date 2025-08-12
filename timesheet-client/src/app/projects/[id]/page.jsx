@@ -698,7 +698,7 @@ export default function ProjectDetailsPage() {
                 <div className="relative">
                   <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
                     <span className="flex items-center gap-2">
-                      📅 {value ? formatDateToReadable(value) : 'Select date'}
+                      {value ? formatDateToReadable(value) : 'Select date'}
                     </span>
                     <span className="text-purple-600 text-sm flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
@@ -744,10 +744,7 @@ export default function ProjectDetailsPage() {
       </div>
 
       <div className="p-6 border-t border-gray-200 bg-gray-50">
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-600">
-            <span className="text-purple-600">*</span> Click date fields to edit
-          </div>
+        <div className="flex justify-end items-center">
           <div className="flex gap-3">
             <button
               onClick={closeEditModal}
