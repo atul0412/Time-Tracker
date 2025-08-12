@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { formatDateToReadable } from './dateFormate'; // adjust import path as needed
 
 export const exportTimesheetToExcel = (project, timesheets, filename = 'timesheet.xlsx') => {
   if (!Array.isArray(timesheets) || timesheets.length === 0) {
@@ -12,17 +13,24 @@ export const exportTimesheetToExcel = (project, timesheets, filename = 'timeshee
     return;
   }
 
-  console.log(timesheets, project.fields);
-
   // Extract ordered field names from the project schema
   const dynamicFieldNames = project.fields.map((field) => field.fieldName);
 
   // Create flattened timesheet data based on the schema
   const flattenedData = timesheets.map((entry) => {
     const row = {};
+
     dynamicFieldNames.forEach((fieldName) => {
-      row[fieldName] = entry?.data[fieldName] ?? ''; // fallback to empty string if undefined
+      let value = entry?.data[fieldName] ?? '';
+
+      // Format if the value looks like a date
+      if (value && !isNaN(new Date(value).getTime())) {
+        value = formatDateToReadable(value);
+      }
+
+      row[fieldName] = value;
     });
+
     return row;
   });
 
