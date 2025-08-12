@@ -757,11 +757,6 @@ export default function ProjectDetailsPage() {
             <div key={field.fieldName}>
               <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
                 {field.fieldName.replace(/_/g, " ")}
-                {displayFormattedDate && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    (Currently: {displayFormattedDate})
-                  </span>
-                )}
               </label>
 
               {field.fieldName === "Frontend/Backend" ? (
