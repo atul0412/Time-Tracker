@@ -373,7 +373,6 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
     <div class="email-container">
       <!-- Header -->
       <div class="header">
-        <div class="logo">⏰</div>
         <h1>Time-Tracker</h1>
         <p>Professional timesheet management</p>
       </div>
