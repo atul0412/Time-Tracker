@@ -9,7 +9,8 @@ import {
   Settings,
   Search,
   ArrowRight,
-  XCircle
+  XCircle,
+  X
 } from 'lucide-react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -26,6 +27,7 @@ const AssignProjectPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBy] = useState('all');
   const [modalUser, setModalUser] = useState(null);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -104,6 +106,11 @@ const AssignProjectPage = () => {
     return project?.name || '';
   };
 
+  const clearSearch = () => {
+    setSearchTerm('');
+    setShowMobileSearch(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
@@ -116,7 +123,7 @@ const AssignProjectPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br ">
+    <div className="min-h-screen bg-gradient-to-br">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         
         {/* Header stats */}
@@ -175,8 +182,12 @@ const AssignProjectPage = () => {
           <form onSubmit={handleAssign} className="p-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium">Select User *</label>
-                <select className="w-full border rounded px-3 py-2" value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select User *</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                  value={selectedUser} 
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                >
                   <option value="">Choose user</option>
                   {users.map(user => (
                     <option key={user._id} value={user._id}>
@@ -186,8 +197,12 @@ const AssignProjectPage = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium">Select Project *</label>
-                <select className="w-full border rounded px-3 py-2" value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Project *</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                  value={selectedProject} 
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                >
                   <option value="">Choose project</option>
                   {projects.map(project => (
                     <option key={project._id} value={project._id}>
@@ -199,12 +214,18 @@ const AssignProjectPage = () => {
             </div>
 
             {selectedUser && selectedProject && (
-              <div className="mt-4 p-3 border rounded bg-purple-50 text-purple-700">
-                <strong>{getSelectedUserName()}</strong> <ArrowRight className="inline w-4 h-4" /> <strong>{getSelectedProjectName()}</strong>
+              <div className="mt-4 p-3 border border-purple-200 rounded-lg bg-purple-50 text-purple-700 flex items-center gap-2">
+                <strong>{getSelectedUserName()}</strong> 
+                <ArrowRight className="w-4 h-4" /> 
+                <strong>{getSelectedProjectName()}</strong>
               </div>
             )}
 
-            <button type="submit" disabled={assigning} className="mt-4 px-6 py-2 bg-purple-600 text-white rounded flex items-center gap-2">
+            <button 
+              type="submit" 
+              disabled={assigning || !selectedUser || !selectedProject} 
+              className="mt-6 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {assigning && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
               {assigning ? "Assigning..." : "Assign Project"}
             </button>
@@ -213,45 +234,146 @@ const AssignProjectPage = () => {
 
         {/* Assignments */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b flex justify-between">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Settings className="w-5 h-5 text-purple-600" /> Current Assignments
-            </h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2 border rounded-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-900">
+                <Settings className="w-5 h-5 text-purple-600" /> Current Assignments
+                <span className="text-sm font-normal text-gray-500">
+                  ({filteredAssignments.length})
+                </span>
+              </h2>
+              
+              {/* Desktop Search */}
+              <div className="hidden md:block relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Search users, emails, projects..." 
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 w-80" 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                />
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile Search Button */}
+              <div className="md:hidden flex items-center gap-2">
+                <button
+                  onClick={() => setShowMobileSearch(!showMobileSearch)}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                >
+                  <Search className="w-4 h-4" />
+                  Search
+                </button>
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="px-3 py-2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Mobile Search Input */}
+            {showMobileSearch && (
+              <div className="md:hidden mt-4 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Search users, emails, projects..." 
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoFocus
+                />
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Search Results Info */}
+            {searchTerm && (
+              <div className="mt-3 text-sm text-gray-600">
+                {filteredAssignments.length > 0 ? (
+                  <span>Found {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''} matching "{searchTerm}"</span>
+                ) : (
+                  <span>No assignments found matching "{searchTerm}"</span>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="p-6">
             {filteredAssignments.length === 0 ? (
-              <div className="text-center py-10">
-                <XCircle className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-600">No assignments found</p>
+              <div className="text-center py-12">
+                <XCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {searchTerm ? 'No matching assignments' : 'No assignments found'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm 
+                    ? `No assignments match your search for "${searchTerm}"`
+                    : 'Start by assigning projects to users above'
+                  }
+                </p>
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear Search
+                  </button>
+                )}
               </div>
             ) : (
               <>
-                {/* Desktop */}
+                {/* Desktop Table */}
                 <div className="hidden md:block">
                   <table className="min-w-full border divide-y divide-gray-200 rounded-lg overflow-hidden">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
-                        <th className="px-4 py-2"></th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {filteredAssignments.map((assignment, idx) => (
                         <tr key={assignment._id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2">{idx + 1}</td>
-                          <td className="px-4 py-2">{assignment.user?.name}</td>
-                          <td className="px-4 py-2 text-gray-500">{assignment.user?.email}</td>
-                          <td className="px-4 py-2">{assignment.project?.name}</td>
-                          <td className="px-4 py-2 text-right">
-                            <button onClick={() => setModalUser(assignment.user)} className="text-purple-600 hover:underline flex items-center gap-1">
-                              <Eye className="w-4 h-4" /> View
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {assignment.user?.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {assignment.user?.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {assignment.project?.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button 
+                              onClick={() => setModalUser(assignment.user)} 
+                              className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
+                            >
+                              <Eye className="w-4 h-4" /> View Details
                             </button>
                           </td>
                         </tr>
@@ -260,21 +382,29 @@ const AssignProjectPage = () => {
                   </table>
                 </div>
 
-                {/* Mobile */}
+                {/* Mobile Cards */}
                 <div className="block md:hidden space-y-4">
                   {filteredAssignments.map((assignment, idx) => (
-                    <div key={assignment._id} className="p-4 border rounded-lg">
-                      <div className="flex justify-between mb-2">
-                        <div>
-                          <p className="font-semibold">{assignment.user?.name}</p>
+                    <div key={assignment._id} className="p-4 border border-gray-200 rounded-lg shadow-sm bg-white">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{assignment.user?.name}</h3>
                           <p className="text-sm text-gray-500">{assignment.user?.email}</p>
                         </div>
-                        <span className="text-gray-400">#{idx + 1}</span>
+                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">#{idx + 1}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-700">{assignment.project?.name}</span>
-                        <button onClick={() => setModalUser(assignment.user)} className="text-purple-600 text-sm flex items-center gap-1">
-                          <Eye className="w-4 h-4" /> View
+                      
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-600 mb-1">Assigned Project:</p>
+                        <p className="font-medium text-gray-900">{assignment.project?.name}</p>
+                      </div>
+                      
+                      <div className="flex justify-end">
+                        <button 
+                          onClick={() => setModalUser(assignment.user)} 
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
+                        >
+                          <Eye className="w-4 h-4" /> View Details
                         </button>
                       </div>
                     </div>

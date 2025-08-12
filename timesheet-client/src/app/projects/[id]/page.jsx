@@ -611,7 +611,7 @@ export default function ProjectDetailsPage() {
 
       {/* Edit Timesheet Modal */}
       {editingEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
@@ -709,128 +709,162 @@ export default function ProjectDetailsPage() {
 
       {/* Add Timesheet Modal */}
       {addingEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">Add Timesheet Entry</h3>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              {/* Developer Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Developer Name</label>
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
-                  <User className="w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={user?.name || ""}
-                    readOnly
-                    className="flex-1 bg-transparent text-gray-700 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Dynamic fields */}
-              {filteredFields?.map((field) => {
-                const isDate = field.fieldType === "Date";
-                const fieldValue = addFormData[field.fieldName];
-                const isTaskField = field.fieldName.toLowerCase().includes("task");
-
-                const inputValue =
-                  fieldValue !== undefined
-                    ? isDate && !fieldValue
-                      ? new Date().toISOString().split("T")[0]
-                      : fieldValue
-                    : isDate
-                    ? new Date().toISOString().split("T")[0]
-                    : "";
-
-                return (
-                  <div key={field.fieldName}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-                      {field.fieldName.replace(/_/g, " ")}
-                    </label>
-
-                    {field.fieldName === "Frontend/Backend" ? (
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        value={inputValue}
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">Select type</option>
-                        <option value="Frontend">Frontend</option>
-                        <option value="Backend">Backend</option>
-                      </select>
-                    ) : isTaskField ? (
-                      <textarea
-                        rows={4}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
-                        value={inputValue}
-                        placeholder="Describe what you worked on..."
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={
-                          field.fieldType === "Number"
-                            ? "number"
-                            : isDate
-                            ? "date"
-                            : "text"
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        value={inputValue}
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={closeAddModal}
-                disabled={addLoading}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddSubmit}
-                disabled={addLoading}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-              >
-                {addLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-                {addLoading ? 'Adding...' : 'Add Entry'}
-              </button>
-            </div>
+  <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-900">Add Timesheet Entry</h3>
+      </div>
+      
+      <div className="p-6 space-y-4">
+        {/* Developer Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Developer Name</label>
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+            <User className="w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={user?.name || ""}
+              readOnly
+              className="flex-1 bg-transparent text-gray-700 focus:outline-none"
+            />
           </div>
         </div>
-      )}
+
+        {/* Dynamic fields */}
+        {filteredFields?.map((field) => {
+          const isDate = field.fieldType === "Date";
+          const fieldValue = addFormData[field.fieldName];
+          const isTaskField = field.fieldName.toLowerCase().includes("task");
+
+          // ✅ Proper date handling for input value
+          const inputValue = (() => {
+            if (fieldValue !== undefined) {
+              if (isDate && fieldValue) {
+                // Convert stored date to YYYY-MM-DD format for date input
+                const date = new Date(fieldValue);
+                return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
+              }
+              return fieldValue;
+            }
+            // Default value for new entries
+            return isDate ? new Date().toISOString().split("T")[0] : "";
+          })();
+
+          // ✅ Display formatted date for user reference (read-only display)
+          const displayFormattedDate = isDate && fieldValue ? formatDateToReadable(fieldValue) : null;
+
+          return (
+            <div key={field.fieldName}>
+              <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                {field.fieldName.replace(/_/g, " ")}
+                {displayFormattedDate && (
+                  <span className="ml-2 text-xs text-gray-500">
+                    (Currently: {displayFormattedDate})
+                  </span>
+                )}
+              </label>
+
+              {field.fieldName === "Frontend/Backend" ? (
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={inputValue}
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select type</option>
+                  <option value="Frontend">Frontend</option>
+                  <option value="Backend">Backend</option>
+                </select>
+              ) : isTaskField ? (
+                <textarea
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+                  value={inputValue}
+                  placeholder="Describe what you worked on..."
+                  onChange={(e) =>
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: e.target.value,
+                    }))
+                  }
+                />
+              ) : isDate ? (
+                <div className="space-y-2">
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    value={inputValue}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      setAddFormData((prev) => ({
+                        ...prev,
+                        [field.fieldName]: selectedDate,
+                      }));
+                    }}
+                  />
+                  {/* ✅ Show formatted date preview */}
+                  {inputValue && (
+                    <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border">
+                      <span className="font-medium">Preview:</span> {formatDateToReadable(inputValue)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <input
+                  type={
+                    field.fieldType === "Number"
+                      ? "number"
+                      : "text"
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={inputValue}
+                  onChange={(e) => {
+                    const value = field.fieldType === "Number" ? Number(e.target.value) : e.target.value;
+                    setAddFormData((prev) => ({
+                      ...prev,
+                      [field.fieldName]: value,
+                    }));
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+        <button
+          onClick={closeAddModal}
+          disabled={addLoading}
+          className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleAddSubmit}
+          disabled={addLoading}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+        >
+          {addLoading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
+          {addLoading ? 'Adding...' : 'Add Entry'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* Edit Project Modal */}
       {editingProject && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
