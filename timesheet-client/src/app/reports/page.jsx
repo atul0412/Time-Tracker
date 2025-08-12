@@ -220,6 +220,43 @@ export default function ReportPage() {
         }
     }
 
+    // Fixed export function with better error handling
+    const handleExport = () => {
+        try {
+            // Ensure we have valid project data
+            if (!selectedProject || !selectedProject._id) {
+                console.error('No project selected for export')
+                alert('Please select a project to export timesheets')
+                return
+            }
+
+            // Ensure we have timesheets to export
+            if (!filteredTimesheets || filteredTimesheets.length === 0) {
+                alert('No timesheet data available to export')
+                return
+            }
+
+            // Create a safe project object with required fields
+            const safeProject = {
+                _id: selectedProject._id,
+                name: selectedProject.name || 'Unnamed Project',
+                // Add any other fields your export function might need
+                ...selectedProject
+            }
+
+            // Generate filename based on context
+            const filename = viewMode === 'user'
+                ? `timesheet_${selectedUser?.name || 'user'}_${safeProject.name}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+                : `timesheet_${safeProject.name}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+
+            // Call the export function
+            exportTimesheetToExcel(safeProject, filteredTimesheets, filename)
+        } catch (error) {
+            console.error('Export failed:', error)
+            alert('Failed to export timesheet. Please try again.')
+        }
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-br py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -234,7 +271,6 @@ export default function ReportPage() {
                 {/* View Mode Toggle */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        {/* ...mode SVG... */}
                         <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
@@ -255,7 +291,6 @@ export default function ReportPage() {
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
                             <span className="ml-2 flex items-center">
-                                {/* ...user view SVG... */}
                                 <svg className="w-4 h-4 mr-1 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
@@ -276,7 +311,6 @@ export default function ReportPage() {
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
                             <span className="ml-2 flex items-center">
-                                {/* ...project view SVG... */}
                                 <svg className="w-4 h-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
@@ -475,25 +509,52 @@ export default function ReportPage() {
                                             <span className="text-sm text-indigo-600">Devs: </span>
                                             <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
                                         </div>
-                                        {/* Export button */}
-                                        <button
-                                            onClick={() =>
-                                                exportTimesheetToExcel(
-                                                    selectedProject,
-                                                    filteredTimesheets,
-                                                    `timesheet_${selectedProject?.name || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/ /g, '_')}.xlsx`
-                                                )
-                                            }
-                                            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg border border-purple-700 shadow-sm transition-colors font-medium"
-                                        >
-                                            <Download className="w-5 h-5" />
-                                            Export
-                                        </button>
+                                        {/* Fixed Export button */}
+{/* Fixed Export button with debugging */}
+<button
+    onClick={() => {
+        console.log('Export button clicked');
+        console.log('Selected Project:', selectedProject);
+        console.log('Filtered Timesheets:', filteredTimesheets);
+        
+        try {
+            // Create enhanced project object
+            const enhancedProject = {
+                ...selectedProject,
+                fields: selectedProject?.fields || [
+                    { fieldName: 'date' },
+                    { fieldName: 'Developer Name' },
+                    { fieldName: 'task' },
+                    { fieldName: 'Effort Hours' },
+                    { fieldName: 'Frontend/Backend' }
+                ]
+            };
+
+            // Generate filename
+            const filename = viewMode === 'user' 
+                ? `timesheet_${selectedUser?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+                : `timesheet_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+
+            console.log('Calling exportTimesheetToExcel with:', { enhancedProject, filteredTimesheets, filename });
+            
+            exportTimesheetToExcel(enhancedProject, filteredTimesheets, filename);
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Failed to export timesheet: ' + error.message);
+        }
+    }}
+    disabled={!selectedProject || filteredTimesheets.length === 0}
+    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg border border-purple-700 shadow-sm transition-colors font-medium"
+>
+    <Download className="w-5 h-5" />
+    Export
+</button>
+
+
                                     </div>
                                 )}
                             </div>
                         </div>
-
 
                         {/* Date Filter Section */}
                         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -506,7 +567,7 @@ export default function ReportPage() {
                                     {[
                                         { value: 'all', label: 'All' },
                                         { value: 'today', label: 'Today' },
-                                        { value: 'weekly', label: 'Week' },
+                                        { value: 'weekly', label: 'Weekly' },
                                         { value: 'monthly', label: 'Monthly' },
                                         { value: 'custom', label: 'Custom Range' },
                                     ].map((filter) => (
@@ -585,6 +646,7 @@ export default function ReportPage() {
                                 </div>
                             )}
                         </div>
+
                         <div className="p-0 sm:p-6">
                             {timesheetsLoading ? (
                                 <div className="flex items-center justify-center py-8">
@@ -652,7 +714,7 @@ export default function ReportPage() {
                                                                 </td>
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[80px]">
                                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                                        {data['Effort Hours'] || data.workingHours || '0'}
+                                                                        {data['Effort Hours'] || data.workingHours || '0'}h
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[300px]">

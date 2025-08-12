@@ -16,7 +16,8 @@ import {
   Settings,
   ArrowLeft,
   Save,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { exportTimesheetToExcel } from '../../../lib/exportToExcel';
 import { formatDateToReadable } from '../../../lib/dateFormate';
@@ -36,11 +37,11 @@ export default function ProjectDetailsPage() {
 
   const [editingEntry, setEditingEntry] = useState(null);
   const [formData, setFormData] = useState({});
-  const [editLoading, setEditLoading] = useState(false); // Loading spinner for edit modal
+  const [editLoading, setEditLoading] = useState(false);
 
   const [addingEntry, setAddingEntry] = useState(false);
   const [addFormData, setAddFormData] = useState({});
-  const [addLoading, setAddLoading] = useState(false); // Loading spinner for add modal
+  const [addLoading, setAddLoading] = useState(false);
 
   const [editingProject, setEditingProject] = useState(false);
   const [projectFormData, setProjectFormData] = useState({
@@ -48,7 +49,17 @@ export default function ProjectDetailsPage() {
     description: '',
     fields: [],
   });
-  const [editProjectLoading, setEditProjectLoading] = useState(false); // Loading spinner for edit project modal
+  const [editProjectLoading, setEditProjectLoading] = useState(false);
+
+  // Delete confirmation states
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    show: false,
+    type: '', // 'project' or 'timesheet'
+    id: null,
+    title: '',
+    message: '',
+    loading: false
+  });
 
   const [userRole, setUserRole] = useState('');
   const [errors, setErrors] = useState({});
@@ -110,31 +121,70 @@ export default function ProjectDetailsPage() {
     }
   }, [addingEntry, project]);
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
+  // Show delete confirmation
+  const showDeleteConfirmation = (type, itemId, title, message) => {
+    setDeleteConfirmation({
+      show: true,
+      type,
+      id: itemId,
+      title,
+      message,
+      loading: false
+    });
+  };
+
+  // Hide delete confirmation
+  const hideDeleteConfirmation = () => {
+    setDeleteConfirmation({
+      show: false,
+      type: '',
+      id: null,
+      title: '',
+      message: '',
+      loading: false
+    });
+  };
+
+  // Handle confirmed deletion
+  const handleConfirmedDelete = async () => {
+    const { type, id: itemId } = deleteConfirmation;
     
+    setDeleteConfirmation(prev => ({ ...prev, loading: true }));
+
     try {
-      setDeleting(true);
-      await api.delete(`/projects/delete/${id}`);
-      toast.success('Project deleted successfully');
-      router.push('/');
+      if (type === 'project') {
+        await api.delete(`/projects/delete/${itemId}`);
+        toast.success('Project deleted successfully');
+        router.push('/');
+      } else if (type === 'timesheet') {
+        await api.delete(`/timesheets/${itemId}`);
+        toast.success('Timesheet deleted');
+        setTimesheets((prev) => prev.filter((t) => t._id !== itemId));
+      }
+      hideDeleteConfirmation();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to delete project');
+      toast.error(err?.response?.data?.message || `Failed to delete ${type}`);
     } finally {
-      setDeleting(false);
+      setDeleteConfirmation(prev => ({ ...prev, loading: false }));
     }
   };
 
-  const handleTimesheetDelete = async (entryId) => {
-    if (!confirm('Are you sure you want to delete this timesheet entry?')) return;
-    
-    try {
-      await api.delete(`/timesheets/${entryId}`);
-      toast.success('Timesheet deleted');
-      setTimesheets((prev) => prev.filter((t) => t._id !== entryId));
-    } catch (err) {
-      toast.error('Failed to delete timesheet');
-    }
+  const handleDelete = () => {
+    showDeleteConfirmation(
+      'project',
+      id,
+      'Delete Project',
+      `Are you sure you want to delete "${project?.name}"? This action cannot be undone and will also delete all associated timesheet entries.`
+    );
+  };
+
+  const handleTimesheetDelete = (entryId) => {
+    showDeleteConfirmation(
+      'timesheet',
+      entryId,
+      'Delete Timesheet Entry',
+      'Are you sure you want to delete this timesheet entry? This action cannot be undone.'
+    );
   };
 
   const openEditModal = (entry) => {
@@ -197,7 +247,7 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-brflex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">Loading project details...</p>
@@ -239,11 +289,11 @@ export default function ProjectDetailsPage() {
 
   const grouped = groupByDate(timesheets);
 
-    const filteredFields = project.fields?.filter(
-  (field) => field.fieldName != "Developer Name"
-);
+  const filteredFields = project.fields?.filter(
+    (field) => field.fieldName != "Developer Name"
+  );
 
-console.log(project, filteredFields)
+  console.log(project, filteredFields);
 
   return (
     <div className="min-h-screen bg-gradient-to-br">
@@ -317,7 +367,7 @@ console.log(project, filteredFields)
                       className="flex items-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg hover:bg-red-900 transition-all duration-200 shadow-sm disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4" />
-                      {deleting ? 'Deleting...' : 'Delete'}
+                      Delete Project
                     </button>
                   </>
                 )}
@@ -510,9 +560,58 @@ console.log(project, filteredFields)
         </div>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation.show && (
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="bg-red-100 p-3 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{deleteConfirmation.title}</h3>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 mb-8 leading-relaxed">
+                {deleteConfirmation.message}
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={hideDeleteConfirmation}
+                  disabled={deleteConfirmation.loading}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmedDelete}
+                  disabled={deleteConfirmation.loading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {deleteConfirmation.loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Timesheet Modal */}
       {editingEntry && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
@@ -610,7 +709,7 @@ console.log(project, filteredFields)
 
       {/* Add Timesheet Modal */}
       {addingEntry && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">Add Timesheet Entry</h3>
@@ -730,162 +829,161 @@ console.log(project, filteredFields)
       )}
 
       {/* Edit Project Modal */}
-     {editingProject && (
-  <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
-      </div>
+      {editingProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
+            </div>
 
-      <div className="p-6 space-y-6">
-        {/* Project Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
-          <input
-            type="text"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            value={projectFormData.name}
-            onChange={(e) =>
-              setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-          <textarea
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-            value={projectFormData.description}
-            onChange={(e) =>
-              setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Dynamic Fields */}
-        {projectFormData.fields
-          ?.filter(
-            (field) =>
-              !["task", "date", "workingHours", "Frontend/Backend"].includes(
-                field.fieldName
-              )
-          )
-          .map((field, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Custom Field {index + 1}
-              </label>
-              <div className="flex flex-col sm:flex-row gap-3">
+            <div className="p-6 space-y-6">
+              {/* Project Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
                 <input
                   type="text"
-                  placeholder="Field Name"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  value={field.fieldName}
-                  onChange={(e) => {
-                    const updated = [...projectFormData.fields];
-                    updated[index].fieldName = e.target.value;
-                    setProjectFormData((prev) => ({
-                      ...prev,
-                      fields: updated,
-                    }));
-                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={projectFormData.name}
+                  onChange={(e) =>
+                    setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
                 />
-                <select
-                  className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  value={field.fieldType}
-                  onChange={(e) => {
-                    const updated = [...projectFormData.fields];
-                    updated[index].fieldType = e.target.value;
-                    setProjectFormData((prev) => ({
-                      ...prev,
-                      fields: updated,
-                    }));
-                  }}
-                >
-                  <option value="String">String</option>
-                  <option value="Number">Number</option>
-                  <option value="Date">Date</option>
-                  <option value="Boolean">Boolean</option>
-                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
+                  value={projectFormData.description}
+                  onChange={(e) =>
+                    setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                />
+              </div>
+
+              {/* Dynamic Fields */}
+              {projectFormData.fields
+                ?.filter(
+                  (field) =>
+                    !["task", "date", "workingHours", "Frontend/Backend"].includes(
+                      field.fieldName
+                    )
+                )
+                .map((field, index) => (
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Custom Field {index + 1}
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="text"
+                        placeholder="Field Name"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        value={field.fieldName}
+                        onChange={(e) => {
+                          const updated = [...projectFormData.fields];
+                          updated[index].fieldName = e.target.value;
+                          setProjectFormData((prev) => ({
+                            ...prev,
+                            fields: updated,
+                          }));
+                        }}
+                      />
+                      <select
+                        className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        value={field.fieldType}
+                        onChange={(e) => {
+                          const updated = [...projectFormData.fields];
+                          updated[index].fieldType = e.target.value;
+                          setProjectFormData((prev) => ({
+                            ...prev,
+                            fields: updated,
+                          }));
+                        }}
+                      >
+                        <option value="String">String</option>
+                        <option value="Number">Number</option>
+                        <option value="Date">Date</option>
+                        <option value="Boolean">Boolean</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...projectFormData.fields];
+                          updated.splice(index, 1);
+                          setProjectFormData((prev) => ({
+                            ...prev,
+                            fields: updated,
+                          }));
+                        }}
+                        className="text-red-500 hover:text-red-700 p-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+              {/* Add New Field Button */}
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => {
-                    const updated = [...projectFormData.fields];
-                    updated.splice(index, 1);
                     setProjectFormData((prev) => ({
                       ...prev,
-                      fields: updated,
+                      fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
                     }));
                   }}
-                  className="text-red-500 hover:text-red-700 p-2"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  + Add Field
                 </button>
               </div>
             </div>
-          ))}
 
-        {/* Add New Field Button */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setProjectFormData((prev) => ({
-                ...prev,
-                fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
-              }));
-            }}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-          >
-            + Add Field
-          </button>
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setEditingProject(false)}
+                disabled={editProjectLoading}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setEditProjectLoading(true);
+                    await api.put(`/projects/${id}`, projectFormData);
+                    toast.success("Project updated");
+                    setProject((prev) => ({
+                      ...prev,
+                      ...projectFormData,
+                    }));
+                    setEditingProject(false);
+                  } catch (err) {
+                    toast.error(
+                      err?.response?.data?.message || "Failed to update project"
+                    );
+                  } finally {
+                    setEditProjectLoading(false);
+                  }
+                }}
+                disabled={editProjectLoading}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                {editProjectLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {editProjectLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-        <button
-          onClick={() => setEditingProject(false)}
-          disabled={editProjectLoading}
-          className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={async () => {
-            try {
-              setEditProjectLoading(true);
-              await api.put(`/projects/${id}`, projectFormData);
-              toast.success("Project updated");
-              setProject((prev) => ({
-                ...prev,
-                ...projectFormData,
-              }));
-              setEditingProject(false);
-            } catch (err) {
-              toast.error(
-                err?.response?.data?.message || "Failed to update project"
-              );
-            } finally {
-              setEditProjectLoading(false);
-            }
-          }}
-          disabled={editProjectLoading}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-        >
-          {editProjectLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          {editProjectLoading ? "Saving..." : "Save Changes"}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+      )}
     </div>
   );
 }
