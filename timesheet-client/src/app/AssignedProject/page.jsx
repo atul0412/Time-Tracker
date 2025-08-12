@@ -10,7 +10,8 @@ import {
   Search,
   ArrowRight,
   XCircle,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -57,12 +58,43 @@ const AssignProjectPage = () => {
     fetchData();
   }, []);
 
+  // ✅ Check if user is already assigned to the project
+  const isUserAlreadyAssigned = (userId, projectId) => {
+    return activeAssignments.some(assignment => 
+      assignment.user?._id === userId && assignment.project?._id === projectId
+    );
+  };
+
+  // ✅ Get user projects for validation message
+  const getUserAssignedProjects = (userId) => {
+    return activeAssignments
+      .filter(assignment => assignment.user?._id === userId)
+      .map(assignment => assignment.project?.name)
+      .filter(Boolean);
+  };
+
   const handleAssign = async (e) => {
     e.preventDefault();
     if (!selectedUser || !selectedProject) {
       toast.error('Please select both user and project');
       return;
     }
+
+    // ✅ Check if user is already assigned to this project
+    if (isUserAlreadyAssigned(selectedUser, selectedProject)) {
+      const userName = getSelectedUserName();
+      const projectName = getSelectedProjectName();
+      
+      toast.error(
+        `${userName} is already assigned to "${projectName}"`,
+        {
+          duration: 4000,
+          icon: '⚠️',
+        }
+      );
+      return;
+    }
+
     setAssigning(true);
     try {
       await api.post('/assignProject/assign', {
@@ -110,6 +142,10 @@ const AssignProjectPage = () => {
     setSearchTerm('');
     setShowMobileSearch(false);
   };
+
+  // ✅ Check if current selection is already assigned
+  const isCurrentSelectionDuplicate = selectedUser && selectedProject && 
+    isUserAlreadyAssigned(selectedUser, selectedProject);
 
   if (loading) {
     return (
@@ -213,21 +249,76 @@ const AssignProjectPage = () => {
               </div>
             </div>
 
+            {/* ✅ Show assignment preview or duplicate warning */}
             {selectedUser && selectedProject && (
-              <div className="mt-4 p-3 border border-purple-200 rounded-lg bg-purple-50 text-purple-700 flex items-center gap-2">
-                <strong>{getSelectedUserName()}</strong> 
-                <ArrowRight className="w-4 h-4" /> 
-                <strong>{getSelectedProjectName()}</strong>
+              <div className={`mt-4 p-3 border rounded-lg flex items-center gap-2 ${
+                isCurrentSelectionDuplicate 
+                  ? 'border-red-200 bg-red-50 text-red-700'
+                  : 'border-purple-200 bg-purple-50 text-purple-700'
+              }`}>
+                {isCurrentSelectionDuplicate ? (
+                  <>
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                    <span className="font-medium">
+                      {getSelectedUserName()} is already assigned to "{getSelectedProjectName()}"
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <strong>{getSelectedUserName()}</strong> 
+                    <ArrowRight className="w-4 h-4" /> 
+                    <strong>{getSelectedProjectName()}</strong>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ✅ Show user's current assignments if user is selected */}
+            {selectedUser && !selectedProject && (
+              <div className="mt-4">
+                {(() => {
+                  const userProjects = getUserAssignedProjects(selectedUser);
+                  if (userProjects.length > 0) {
+                    return (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm font-medium text-blue-800 mb-1">
+                          {getSelectedUserName()} is currently assigned to:
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {userProjects.map((projectName, index) => (
+                            <span 
+                              key={index}
+                              className="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium"
+                            >
+                              {projectName}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-sm text-gray-600">
+                        {getSelectedUserName()} has no current project assignments
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
             <button 
               type="submit" 
-              disabled={assigning || !selectedUser || !selectedProject} 
-              className="mt-6 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={assigning || !selectedUser || !selectedProject || isCurrentSelectionDuplicate} 
+              className={`mt-6 px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isCurrentSelectionDuplicate
+                  ? 'bg-gray-400 text-white'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
             >
               {assigning && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-              {assigning ? "Assigning..." : "Assign Project"}
+              {assigning ? "Assigning..." : isCurrentSelectionDuplicate ? "Already Assigned" : "Assign Project"}
             </button>
           </form>
         </div>

@@ -16,7 +16,8 @@ import {
   Search,
   Filter,
   Edit3,
-  Save
+  Save,
+  AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import api from '../../lib/axios';
@@ -53,6 +54,11 @@ export default function AllUsersPage() {
   const [userProjects, setUserProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
+
+  // ✅ Delete confirmation states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -167,18 +173,37 @@ export default function AllUsersPage() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+  // ✅ Open delete confirmation modal
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setDeleteConfirmOpen(true);
+  };
+
+  // ✅ Confirm delete action
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setDeleting(true);
     
     try {
-      await api.delete(`/users/${userId}`);
-      setUsers((prev) => prev.filter((user) => user._id !== userId));
+      await api.delete(`/users/${userToDelete._id}`);
+      setUsers((prev) => prev.filter((user) => user._id !== userToDelete._id));
       toast.success('User deleted successfully');
+      setDeleteConfirmOpen(false);
+      setUserToDelete(null);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to delete user';
       setError(msg);
       toast.error(msg);
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  // ✅ Cancel delete action
+  const cancelDeleteUser = () => {
+    setDeleteConfirmOpen(false);
+    setUserToDelete(null);
   };
 
   const handleUserClick = async (user) => {
@@ -206,7 +231,7 @@ export default function AllUsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-brto-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">Loading users...</p>
@@ -217,7 +242,7 @@ export default function AllUsersPage() {
 
   if (error && users.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-brto-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50 flex items-center justify-center">
         <div className="bg-white rounded-xl p-8 shadow-lg border border-red-200 text-center max-w-md">
           <div className="bg-red-100 rounded-full p-3 w-12 h-12 mx-auto mb-4">
             <X className="w-6 h-6 text-red-600" />
@@ -236,7 +261,7 @@ export default function AllUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-brto-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
@@ -454,7 +479,7 @@ export default function AllUsersPage() {
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => handleDeleteUser(user._id)}
+                                onClick={() => handleDeleteUser(user)}
                                 className="text-red-600 hover:text-red-800 transition-colors p-1 rounded"
                                 title="Delete user"
                               >
@@ -526,7 +551,7 @@ export default function AllUsersPage() {
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDeleteUser(user._id)}
+                              onClick={() => handleDeleteUser(user)}
                               className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -680,7 +705,7 @@ export default function AllUsersPage() {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -796,9 +821,89 @@ export default function AllUsersPage() {
         </div>
       )}
 
+      {/* ✅ Delete Confirmation Modal */}
+      {deleteConfirmOpen && userToDelete && (
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-100 p-2 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Delete User</h2>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="text-center">
+                <div className="bg-red-100 rounded-full p-3 w-12 h-12 mx-auto mb-4">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Are you sure you want to delete this user?
+                </h3>
+                
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-purple-100 rounded-full p-2">
+                      <User className="w-4 h-4 text-purple-700" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">{userToDelete.name}</p>
+                      <p className="text-sm text-gray-500">{userToDelete.email}</p>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                        userToDelete.role === 'admin' 
+                          ? 'bg-purple-100 text-purple-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {userToDelete.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
+                        {userToDelete.role ? userToDelete.role.charAt(0).toUpperCase() + userToDelete.role.slice(1) : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 mb-6">
+                  This action cannot be undone. All user data and project assignments will be permanently removed.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={cancelDeleteUser}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteUser}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete User
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Project Modal */}
       {projectModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">

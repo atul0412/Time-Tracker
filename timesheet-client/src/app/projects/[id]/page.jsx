@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '../../../lib/axios';
 import toast from 'react-hot-toast';
-import { 
-  Pencil, 
-  Trash2, 
-  Download, 
-  Plus, 
-  Calendar, 
-  Clock, 
-  User, 
+import {
+  Pencil,
+  Trash2,
+  Download,
+  Plus,
+  Calendar,
+  Clock,
+  User,
   FileText,
   Settings,
   ArrowLeft,
@@ -148,7 +148,7 @@ export default function ProjectDetailsPage() {
   // Handle confirmed deletion
   const handleConfirmedDelete = async () => {
     const { type, id: itemId } = deleteConfirmation;
-    
+
     setDeleteConfirmation(prev => ({ ...prev, loading: true }));
 
     try {
@@ -320,7 +320,7 @@ export default function ProjectDetailsPage() {
                   <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
                 </div>
                 <p className="text-gray-600 mb-4">{project.description || "No description available"}</p>
-                
+
                 {/* Project Stats */}
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center gap-1 text-gray-500">
@@ -343,7 +343,7 @@ export default function ProjectDetailsPage() {
                   <Plus className="w-4 h-4" />
                   Add Entry
                 </button>
-                
+
                 {userRole === 'admin' && (
                   <>
                     <button
@@ -371,8 +371,8 @@ export default function ProjectDetailsPage() {
                     </button>
                   </>
                 )}
-                
-                <button 
+
+                <button
                   onClick={() => exportTimesheetToExcel(project, timesheets)}
                   className="flex items-center gap-2 bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-900 transition-all duration-200 shadow-sm"
                 >
@@ -573,7 +573,7 @@ export default function ProjectDetailsPage() {
                   <h3 className="text-lg font-semibold text-gray-900">{deleteConfirmation.title}</h3>
                 </div>
               </div>
-              
+
               <p className="text-gray-600 mb-8 leading-relaxed">
                 {deleteConfirmation.message}
               </p>
@@ -610,218 +610,130 @@ export default function ProjectDetailsPage() {
       )}
 
       {/* Edit Timesheet Modal */}
-      {editingEntry && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
+     {editingEntry && (
+  <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
+          <button
+            onClick={closeEditModal}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        {/* Date field with formatted display */}
+        {formData.date && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Entry Date
+              <span className="text-xs text-purple-600 font-normal ml-1">*</span>
+            </label>
+            <div className="relative">
+              <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
+                <span className="flex items-center gap-2">
+                  {formatDateToReadable(formData.date)}
+                </span>
+                <span className="text-purple-600 text-sm flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                </span>
+              </div>
+              
+              {/* Invisible date input overlay for editing */}
+              <input
+                type="date"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                value={formData.date.slice(0, 10)}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    date: e.target.value,
+                  }))
+                }
+              />
             </div>
-            
-            <div className="p-6 space-y-4">
-              {/* Date field */}
-              {formData.date && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Entry Date</label>
+          </div>
+        )}
+
+        {/* Other fields */}
+        {Object.entries(formData).map(([key, value]) => {
+          if (key === 'date') return null;
+
+          const isTaskField = key.toLowerCase() === 'task';
+          const isDateField = key.toLowerCase().includes('date');
+          const inputType =
+            typeof value === 'number' || key.toLowerCase().includes('hours')
+              ? 'number'
+              : isDateField
+              ? 'date'
+              : 'text';
+
+          return (
+            <div key={key}>
+              <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                {key.replace(/_/g, ' ')}
+                {isDateField && (
+                  <span className="text-xs text-purple-600 font-normal ml-1">*</span>
+                )}
+              </label>
+              
+              {isTaskField ? (
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
+                  value={value}
+                  placeholder="Describe what you worked on..."
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      [key]: e.target.value,
+                    }))
+                  }
+                />
+              ) : isDateField ? (
+                // ✅ Format other date fields too
+                <div className="relative">
+                  <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
+                    <span className="flex items-center gap-2">
+                      📅 {value ? formatDateToReadable(value) : 'Select date'}
+                    </span>
+                    <span className="text-purple-600 text-sm flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                    </span>
+                  </div>
+                  
                   <input
                     type="date"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    value={formData.date.slice(0, 10)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    value={value || ''}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        date: e.target.value,
+                        [key]: e.target.value,
                       }))
                     }
                   />
                 </div>
-              )}
-
-              {/* Other fields */}
-              {Object.entries(formData).map(([key, value]) => {
-                if (key === 'date') return null;
-
-                const isTaskField = key.toLowerCase() === 'task';
-                const inputType =
-                  typeof value === 'number' || key.toLowerCase().includes('hours')
-                    ? 'number'
-                    : key.toLowerCase().includes('date')
-                    ? 'date'
-                    : 'text';
-
-                return (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-                      {key.replace(/_/g, ' ')}
-                    </label>
-                    {isTaskField ? (
-                      <textarea
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-                        value={value}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={inputType}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        value={value}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            [key]: inputType === 'number' ? Number(e.target.value) : e.target.value,
-                          }))
-                        }
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={closeEditModal}
-                disabled={editLoading}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSubmit}
-                disabled={editLoading}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-              >
-                {editLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                {editLoading ? 'Updating...' : 'Update Entry'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Timesheet Modal */}
-      {addingEntry && (
-  <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-900">Add Timesheet Entry</h3>
-      </div>
-      
-      <div className="p-6 space-y-4">
-        {/* Developer Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Developer Name</label>
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
-            <User className="w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={user?.name || ""}
-              readOnly
-              className="flex-1 bg-transparent text-gray-700 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Dynamic fields */}
-        {filteredFields?.map((field) => {
-          const isDate = field.fieldType === "Date";
-          const fieldValue = addFormData[field.fieldName];
-          const isTaskField = field.fieldName.toLowerCase().includes("task");
-
-          // ✅ Proper date handling for input value
-          const inputValue = (() => {
-            if (fieldValue !== undefined) {
-              if (isDate && fieldValue) {
-                // Convert stored date to YYYY-MM-DD format for date input
-                const date = new Date(fieldValue);
-                return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
-              }
-              return fieldValue;
-            }
-            // Default value for new entries
-            return isDate ? new Date().toISOString().split("T")[0] : "";
-          })();
-
-          // ✅ Display formatted date for user reference (read-only display)
-          const displayFormattedDate = isDate && fieldValue ? formatDateToReadable(fieldValue) : null;
-
-          return (
-            <div key={field.fieldName}>
-              <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-                {field.fieldName.replace(/_/g, " ")}
-              </label>
-
-              {field.fieldName === "Frontend/Backend" ? (
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={inputValue}
-                  onChange={(e) =>
-                    setAddFormData((prev) => ({
-                      ...prev,
-                      [field.fieldName]: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Select type</option>
-                  <option value="Frontend">Frontend</option>
-                  <option value="Backend">Backend</option>
-                </select>
-              ) : isTaskField ? (
-                <textarea
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
-                  value={inputValue}
-                  placeholder="Describe what you worked on..."
-                  onChange={(e) =>
-                    setAddFormData((prev) => ({
-                      ...prev,
-                      [field.fieldName]: e.target.value,
-                    }))
-                  }
-                />
-              ) : isDate ? (
-                <div className="space-y-2">
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    value={inputValue}
-                    onChange={(e) => {
-                      const selectedDate = e.target.value;
-                      setAddFormData((prev) => ({
-                        ...prev,
-                        [field.fieldName]: selectedDate,
-                      }));
-                    }}
-                  />
-                  {/* ✅ Show formatted date preview */}
-                  {inputValue && (
-                    <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border">
-                      <span className="font-medium">Preview:</span> {formatDateToReadable(inputValue)}
-                    </div>
-                  )}
-                </div>
               ) : (
                 <input
-                  type={
-                    field.fieldType === "Number"
-                      ? "number"
-                      : "text"
-                  }
+                  type={inputType}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={inputValue}
+                  value={value || ''}
+                  placeholder={
+                    inputType === 'number' 
+                      ? "Enter number..." 
+                      : `Enter ${key.toLowerCase().replace(/_/g, ' ')}...`
+                  }
                   onChange={(e) => {
-                    const value = field.fieldType === "Number" ? Number(e.target.value) : e.target.value;
-                    setAddFormData((prev) => ({
+                    const newValue = inputType === 'number' 
+                      ? (e.target.value === "" ? "" : Number(e.target.value))
+                      : e.target.value;
+                    setFormData((prev) => ({
                       ...prev,
-                      [field.fieldName]: value,
+                      [key]: newValue,
                     }));
                   }}
                 />
@@ -831,188 +743,436 @@ export default function ProjectDetailsPage() {
         })}
       </div>
 
-      <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-        <button
-          onClick={closeAddModal}
-          disabled={addLoading}
-          className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleAddSubmit}
-          disabled={addLoading}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-        >
-          {addLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-          ) : (
-            <Plus className="w-4 h-4" />
-          )}
-          {addLoading ? 'Adding...' : 'Add Entry'}
-        </button>
+      <div className="p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            <span className="text-purple-600">*</span> Click date fields to edit
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={closeEditModal}
+              disabled={editLoading}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEditSubmit}
+              disabled={editLoading}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {editLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Update Entry
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 )}
 
-
-      {/* Edit Project Modal */}
-      {editingProject && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* Add Timesheet Modal */}
+      {addingEntry && (
+        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Project Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={projectFormData.name}
-                  onChange={(e) =>
-                    setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-                  value={projectFormData.description}
-                  onChange={(e) =>
-                    setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
-                  }
-                />
-              </div>
-
-              {/* Dynamic Fields */}
-              {projectFormData.fields
-                ?.filter(
-                  (field) =>
-                    !["task", "date", "workingHours", "Frontend/Backend"].includes(
-                      field.fieldName
-                    )
-                )
-                .map((field, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Custom Field {index + 1}
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <input
-                        type="text"
-                        placeholder="Field Name"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        value={field.fieldName}
-                        onChange={(e) => {
-                          const updated = [...projectFormData.fields];
-                          updated[index].fieldName = e.target.value;
-                          setProjectFormData((prev) => ({
-                            ...prev,
-                            fields: updated,
-                          }));
-                        }}
-                      />
-                      <select
-                        className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        value={field.fieldType}
-                        onChange={(e) => {
-                          const updated = [...projectFormData.fields];
-                          updated[index].fieldType = e.target.value;
-                          setProjectFormData((prev) => ({
-                            ...prev,
-                            fields: updated,
-                          }));
-                        }}
-                      >
-                        <option value="String">String</option>
-                        <option value="Number">Number</option>
-                        <option value="Date">Date</option>
-                        <option value="Boolean">Boolean</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = [...projectFormData.fields];
-                          updated.splice(index, 1);
-                          setProjectFormData((prev) => ({
-                            ...prev,
-                            fields: updated,
-                          }));
-                        }}
-                        className="text-red-500 hover:text-red-700 p-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-              {/* Add New Field Button */}
-              <div className="pt-2">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Add Timesheet Entry</h3>
                 <button
-                  type="button"
-                  onClick={() => {
-                    setProjectFormData((prev) => ({
-                      ...prev,
-                      fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
-                    }));
-                  }}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  onClick={closeAddModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  + Add Field
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setEditingProject(false)}
-                disabled={editProjectLoading}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    setEditProjectLoading(true);
-                    await api.put(`/projects/${id}`, projectFormData);
-                    toast.success("Project updated");
-                    setProject((prev) => ({
-                      ...prev,
-                      ...projectFormData,
-                    }));
-                    setEditingProject(false);
-                  } catch (err) {
-                    toast.error(
-                      err?.response?.data?.message || "Failed to update project"
-                    );
-                  } finally {
-                    setEditProjectLoading(false);
+            <div className="p-6 space-y-4">
+              {/* Developer Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Developer Name</label>
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                  <User className="w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={user?.name || ""}
+                    readOnly
+                    className="flex-1 bg-transparent text-gray-700 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic fields */}
+              {filteredFields?.map((field) => {
+                const isDate = field.fieldType === "Date";
+                const fieldValue = addFormData[field.fieldName];
+                const isTaskField = field.fieldName.toLowerCase().includes("task");
+
+                // ✅ For date fields, use formatted date directly as display value
+                const inputValue = (() => {
+                  if (fieldValue !== undefined) {
+                    if (isDate && fieldValue) {
+                      // Show formatted date directly
+                      return formatDateToReadable(fieldValue);
+                    }
+                    return fieldValue;
                   }
-                }}
-                disabled={editProjectLoading}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-              >
-                {editProjectLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                {editProjectLoading ? "Saving..." : "Save Changes"}
-              </button>
+                  // Default value for new entries - show today's date formatted
+                  return isDate ? formatDateToReadable(new Date()) : "";
+                })();
+
+                return (
+                  <div key={field.fieldName}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                      {field.fieldName.replace(/_/g, " ")}
+                      {field.fieldType === "Date" && (
+                        <span className="text-xs text-purple-600 font-normal ml-1">*</span>
+                      )}
+                    </label>
+
+                    {field.fieldName === "Frontend/Backend" ? (
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        value={inputValue}
+                        onChange={(e) =>
+                          setAddFormData((prev) => ({
+                            ...prev,
+                            [field.fieldName]: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Select type</option>
+                        <option value="Frontend">Frontend</option>
+                        <option value="Backend">Backend</option>
+                      </select>
+                    ) : isTaskField ? (
+                      <textarea
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+                        value={inputValue}
+                        placeholder="Describe what you worked on..."
+                        onChange={(e) =>
+                          setAddFormData((prev) => ({
+                            ...prev,
+                            [field.fieldName]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : isDate ? (
+                      // ✅ Enhanced date field with formatted display and editing capability
+                      <div className="relative">
+                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-black-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
+                          <span className="flex items-center gap-2">
+                            {inputValue}
+                          </span>
+                          <span className="text-gray-600 text-sm flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                          </span>
+                        </div>
+
+                        {/* Invisible date input overlay for editing */}
+                        <input
+                          type="date"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          value={fieldValue ? new Date(fieldValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
+                          onChange={(e) => {
+                            const selectedDate = e.target.value;
+                            setAddFormData((prev) => ({
+                              ...prev,
+                              [field.fieldName]: selectedDate,
+                            }));
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type={
+                          field.fieldType === "Number"
+                            ? "number"
+                            : "text"
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        value={inputValue}
+                        placeholder={
+                          field.fieldType === "Number"
+                            ? "Enter number..."
+                            : `Enter ${field.fieldName.toLowerCase()}...`
+                        }
+                        onChange={(e) => {
+                          const value = field.fieldType === "Number"
+                            ? (e.target.value === "" ? "" : Number(e.target.value))
+                            : e.target.value;
+                          setAddFormData((prev) => ({
+                            ...prev,
+                            [field.fieldName]: value,
+                          }));
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-end items-center">
+                <div className="flex gap-3">
+                  <button
+                    onClick={closeAddModal}
+                    disabled={addLoading}
+                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddSubmit}
+                    disabled={addLoading}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {addLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        Add Entry
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+
+
+      {/* Edit Project Modal */}
+   {editingProject && (
+  <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+        <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
+        <button
+          onClick={() => setEditingProject(false)}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {/* Project Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+          <input
+            type="text"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            value={projectFormData.name}
+            onChange={(e) =>
+              setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
+            }
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+          <textarea
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
+            value={projectFormData.description}
+            onChange={(e) =>
+              setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
+            }
+          />
+        </div>
+
+        {/* Custom Fields Only */}
+        <div>
+          <h4 className="text-lg font-medium text-gray-900 mb-4">Custom Fields</h4>
+          
+          {/* ✅ Filter out ALL default fields */}
+          {projectFormData.fields
+            ?.filter((field) => {
+              const defaultFields = [
+                "task", 
+                "date", 
+                "Effort Hours", 
+                "Frontend/Backend",
+                "Developer Name",
+                "Task",
+              ];
+              return !defaultFields.includes(field.fieldName);
+            })
+            .map((field, index) => (
+              <div key={index} className="p-4 bg-gray-50 rounded-lg mb-4 border border-gray-200">
+                <div className="flex justify-between items-center mb-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Custom Field {index + 1}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = projectFormData.fields.filter((_, i) => {
+                        const customFields = projectFormData.fields.filter(f => {
+                          const defaultFields = [
+                            "task", "date", "workingHours", "Frontend/Backend",
+                            "Developer Name", "Task", "Date", "Working Hours"
+                          ];
+                          return !defaultFields.includes(f.fieldName);
+                        });
+                        return i !== customFields.findIndex(cf => cf.fieldName === field.fieldName);
+                      });
+                      setProjectFormData((prev) => ({
+                        ...prev,
+                        fields: updated,
+                      }));
+                    }}
+                    className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
+                    title="Delete field"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    placeholder="Field Name"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    value={field.fieldName}
+                    onChange={(e) => {
+                      const updated = [...projectFormData.fields];
+                      const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
+                      if (actualIndex !== -1) {
+                        updated[actualIndex].fieldName = e.target.value;
+                        setProjectFormData((prev) => ({
+                          ...prev,
+                          fields: updated,
+                        }));
+                      }
+                    }}
+                  />
+                  <select
+                    className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    value={field.fieldType}
+                    onChange={(e) => {
+                      const updated = [...projectFormData.fields];
+                      const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
+                      if (actualIndex !== -1) {
+                        updated[actualIndex].fieldType = e.target.value;
+                        setProjectFormData((prev) => ({
+                          ...prev,
+                          fields: updated,
+                        }));
+                      }
+                    }}
+                  >
+                    <option value="String">String</option>
+                    <option value="Number">Number</option>
+                    <option value="Date">Date</option>
+                    <option value="Boolean">Boolean</option>
+                  </select>
+                </div>
+              </div>
+            ))}
+
+          {/* Show message if no custom fields */}
+          {projectFormData.fields?.filter((field) => {
+            const defaultFields = [
+              "task", "date", "workingHours", "Frontend/Backend",
+              "Developer Name", "Task", "Date", "Working Hours"
+            ];
+            return !defaultFields.includes(field.fieldName);
+          }).length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>No custom fields added yet</p>
+              <p className="text-sm">Click "Add Custom Field" to create one</p>
+            </div>
+          )}
+        </div>
+
+        {/* Add New Field Button */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setProjectFormData((prev) => ({
+                ...prev,
+                fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
+              }));
+            }}
+            className="px-4 py-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Custom Field
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setEditingProject(false)}
+            disabled={editProjectLoading}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                setEditProjectLoading(true);
+                await api.put(`/projects/${id}`, projectFormData);
+                toast.success("Project updated");
+                setProject((prev) => ({
+                  ...prev,
+                  ...projectFormData,
+                }));
+                setEditingProject(false);
+              } catch (err) {
+                toast.error(
+                  err?.response?.data?.message || "Failed to update project"
+                );
+              } finally {
+                setEditProjectLoading(false);
+              }
+            }}
+            disabled={editProjectLoading}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {editProjectLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Changes
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
