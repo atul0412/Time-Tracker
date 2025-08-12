@@ -510,45 +510,45 @@ export default function ReportPage() {
                                             <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
                                         </div>
                                         {/* Fixed Export button */}
-{/* Fixed Export button with debugging */}
-<button
-    onClick={() => {
-        console.log('Export button clicked');
-        console.log('Selected Project:', selectedProject);
-        console.log('Filtered Timesheets:', filteredTimesheets);
-        
-        try {
-            // Create enhanced project object
-            const enhancedProject = {
-                ...selectedProject,
-                fields: selectedProject?.fields || [
-                    { fieldName: 'date' },
-                    { fieldName: 'Developer Name' },
-                    { fieldName: 'task' },
-                    { fieldName: 'Effort Hours' },
-                    { fieldName: 'Frontend/Backend' }
-                ]
-            };
+                                        {/* Fixed Export button with debugging */}
+                                        <button
+                                            onClick={() => {
+                                                console.log('Export button clicked');
+                                                console.log('Selected Project:', selectedProject);
+                                                console.log('Filtered Timesheets:', filteredTimesheets);
 
-            // Generate filename
-            const filename = viewMode === 'user' 
-                ? `timesheet_${selectedUser?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
-                : `timesheet_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+                                                try {
+                                                    // Create enhanced project object
+                                                    const enhancedProject = {
+                                                        ...selectedProject,
+                                                        fields: selectedProject?.fields || [
+                                                            { fieldName: 'date' },
+                                                            { fieldName: 'Developer Name' },
+                                                            { fieldName: 'task' },
+                                                            { fieldName: 'Effort Hours' },
+                                                            { fieldName: 'Frontend/Backend' }
+                                                        ]
+                                                    };
 
-            console.log('Calling exportTimesheetToExcel with:', { enhancedProject, filteredTimesheets, filename });
-            
-            exportTimesheetToExcel(enhancedProject, filteredTimesheets, filename);
-        } catch (error) {
-            console.error('Export failed:', error);
-            alert('Failed to export timesheet: ' + error.message);
-        }
-    }}
-    disabled={!selectedProject || filteredTimesheets.length === 0}
-    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg border border-purple-700 shadow-sm transition-colors font-medium"
->
-    <Download className="w-5 h-5" />
-    Export
-</button>
+                                                    // Generate filename
+                                                    const filename = viewMode === 'user'
+                                                        ? `timesheet_${selectedUser?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+                                                        : `timesheet_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+
+                                                    console.log('Calling exportTimesheetToExcel with:', { enhancedProject, filteredTimesheets, filename });
+
+                                                    exportTimesheetToExcel(enhancedProject, filteredTimesheets, filename);
+                                                } catch (error) {
+                                                    console.error('Export failed:', error);
+                                                    alert('Failed to export timesheet: ' + error.message);
+                                                }
+                                            }}
+                                            disabled={!selectedProject || filteredTimesheets.length === 0}
+                                            className="flex items-center gap-2 bg-green-800 hover:bg-green-950 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg border border-green-700 shadow-sm transition-colors font-medium"
+                                        >
+                                            <Download className="w-5 h-5" />
+                                            Export
+                                        </button>
 
 
                                     </div>
