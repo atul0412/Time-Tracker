@@ -11,7 +11,9 @@ import {
   ArrowRight,
   XCircle,
   X,
-  AlertTriangle
+  AlertTriangle,
+  UserMinus,
+  Trash2
 } from 'lucide-react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -25,10 +27,12 @@ const AssignProjectPage = () => {
   const [selectedProject, setSelectedProject] = useState('');
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
+  const [deassigning, setDeassigning] = useState({}); // Track deassigning state for each assignment
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBy] = useState('all');
   const [modalUser, setModalUser] = useState(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [confirmDeassign, setConfirmDeassign] = useState(null); // For confirmation dialog
 
   const fetchData = async () => {
     try {
@@ -110,6 +114,22 @@ const AssignProjectPage = () => {
       toast.error(errorMsg);
     } finally {
       setAssigning(false);
+    }
+  };
+
+  // ✅ New function to handle deassignment
+  const handleDeassign = async (assignmentId, userName, projectName) => {
+    setDeassigning(prev => ({ ...prev, [assignmentId]: true }));
+    try {
+      await api.delete(`/assignProject/deassign/${assignmentId}`);
+      toast.success(`Successfully removed ${userName} from "${projectName}"`);
+      setConfirmDeassign(null);
+      fetchData(); // Refresh the data
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'Failed to deassign project.';
+      toast.error(errorMsg);
+    } finally {
+      setDeassigning(prev => ({ ...prev, [assignmentId]: false }));
     }
   };
 
@@ -460,12 +480,26 @@ const AssignProjectPage = () => {
                             {assignment.project?.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button 
-                              onClick={() => setModalUser(assignment.user)} 
-                              className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
-                            >
-                              <Eye className="w-4 h-4" /> View Details
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => setModalUser(assignment.user)} 
+                                className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
+                              >
+                                <Eye className="w-4 h-4" /> View
+                              </button>
+                              <button 
+                                onClick={() => setConfirmDeassign(assignment)}
+                                disabled={deassigning[assignment._id]}
+                                className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {deassigning[assignment._id] ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                ) : (
+                                  <UserMinus className="w-4 h-4" />
+                                )}
+                                {deassigning[assignment._id] ? 'Removing...' : 'Remove'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -490,12 +524,29 @@ const AssignProjectPage = () => {
                         <p className="font-medium text-gray-900">{assignment.project?.name}</p>
                       </div>
                       
-                      <div className="flex justify-end">
+                      <div className="flex justify-between items-center gap-2">
                         <button 
                           onClick={() => setModalUser(assignment.user)} 
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
                         >
                           <Eye className="w-4 h-4" /> View Details
+                        </button>
+                        <button 
+                          onClick={() => setConfirmDeassign(assignment)}
+                          disabled={deassigning[assignment._id]}
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deassigning[assignment._id] ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                              Removing...
+                            </>
+                          ) : (
+                            <>
+                              <UserMinus className="w-4 h-4" />
+                              Remove
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -505,6 +556,50 @@ const AssignProjectPage = () => {
             )}
           </div>
         </div>
+
+        {/* ✅ Confirmation Modal for Deassignment */}
+        {confirmDeassign && (
+          <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-red-100 p-2 rounded-lg">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Confirm Deassignment</h3>
+                </div>
+                
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to remove <strong>{confirmDeassign.user?.name}</strong> from 
+                  project "<strong>{confirmDeassign.project?.name}</strong>"?
+                </p>
+                
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setConfirmDeassign(null)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeassign(
+                      confirmDeassign._id, 
+                      confirmDeassign.user?.name, 
+                      confirmDeassign.project?.name
+                    )}
+                    disabled={deassigning[confirmDeassign._id]}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {deassigning[confirmDeassign._id] && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    )}
+                    {deassigning[confirmDeassign._id] ? 'Removing...' : 'Yes, Remove'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <UserAssignmentsModal isOpen={!!modalUser} onClose={() => setModalUser(null)} user={modalUser} />
       </div>
