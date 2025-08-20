@@ -34,6 +34,14 @@ export default function Navbar() {
     );
   }
 
+  if (user?.role === 'project_manager') {
+    navLinks.push(
+      { href: '/AssignedProject', label: 'Assigned Project', icon: Clipboard },
+    );
+  }
+
+
+
   // 🔒 Hide navbar on auth pages
   if (
     pathname === '/login' ||

@@ -20,14 +20,15 @@ export default function DashboardPage() {
     try {
       let res;
 
-      if (user?.role === "admin") {
+      if (user?.role === "admin" || user?.role === "project_manager") {
         res = await api.get("/projects/allproject");
+        console.log("Admin projects:", res.data.data);
         setProjects(res.data.data || []);
-      } else if (user?.role === "user") {
+      } else if (user?.role === "user" ) {
         res = await api.get(`/assignProject/user/${user.id}`);
-        const assigned = res.data.data || [];
-        const userProjects = assigned.map((item) => item.project);
-        setProjects(userProjects);
+        // const assigned = res.data.data || [];
+        // const userProjects = assigned.map((item) => item.project);
+        setProjects(res.data.data || []);
       } else {
         throw new Error("Invalid user data");
       }
@@ -161,10 +162,10 @@ export default function DashboardPage() {
               </div>
               
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {projects.map((project) => (
+                {projects.map((data) => (
                   <Link
-                    key={project._id}
-                    href={`/projects/${project._id}`}
+                    key={data._id}
+                    href={`/projects/${data.project._id}`}
                     className="group relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-purple-300 transition-all duration-200 transform hover:-translate-y-1"
                   >
                     {/* Top accent */}
@@ -181,17 +182,17 @@ export default function DashboardPage() {
                     {/* Project Content */}
                     <div className="space-y-3">
                       <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-700 transition-colors duration-200 capitalize">
-                        {project.name}
+                        {data.project?.name}
                       </h3>
                       
                       <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
-                        {project.description || "No description available"}
+                        {data.project?.description || "No description available"}
                       </p>
 
                       <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-xs text-gray-500 font-medium">
-                          Created {project.createdAt ? formatDateToReadable(project.createdAt) : "N/A"}
+                          Created {data.project?.createdAt ? formatDateToReadable(data.project?.createdAt) : "N/A"}
                         </span>
                       </div>
 

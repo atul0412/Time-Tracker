@@ -5,7 +5,8 @@ import {
     deassignProjectByIds,
     getAllAssignedProjects,
     getAssignedProjectsByUserId,
-    getAssignmentById
+    getAssignmentById,
+    getAssignedUsersByProjectId
 } from '../controllers/assignedProjectController.js';
 import { protect, adminOnly } from '../middleware/authMiddleware.js';
 
@@ -28,5 +29,9 @@ router.get('/user/:userId', protect, getAssignedProjectsByUserId);
 
 // Get assignment details by assignment ID
 router.get('/assignment/:assignmentId', protect, getAssignmentById);
+
+// get assigned user by project ID 
+router.get("/assigned-users/:projectId", getAssignedUsersByProjectId);
+
 
 export default router;

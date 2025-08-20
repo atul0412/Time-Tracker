@@ -11,7 +11,6 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       req.user = await User.findById(decoded.userId);
-      console.log(req.user);
       next();
     } catch (err) {
       res.status(401).json({ message: 'Not authorized, token failed' });
@@ -22,9 +21,10 @@ export const protect = async (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'project_manager')) {
     next();
   } else {
-    res.status(403).json({ message: 'Admin access only' });
+    res.status(403).json({ message: 'Admin or Manager access only' });
   }
 };
+

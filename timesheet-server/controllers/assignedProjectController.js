@@ -1,44 +1,74 @@
-import mongoose from 'mongoose';
-import AssignedProject from '../models/assignedProject.js';
+import mongoose from "mongoose";
+import AssignedProject from "../models/assignedProject.js";
+import Project from "../models/project.js"; // Add this import!
+import sendProjectAssignmentEmail from "../utils/sendEmail.js";
 
+// Assign project to user (admin OR project manager if they manage this project)
 export const assignProjectToUser = async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied: Admins only' });
+  // FIX: Proper role check
+  if (req.user.role !== "admin" && req.user.role !== "project_manager") {
+    return res.status(403).json({ message: "Access denied: Admins or project managers only" });
   }
 
   try {
     const { userId, projectId } = req.body;
 
     if (!userId || !projectId) {
-      return res.status(400).json({ message: 'Missing userId or projectId' });
+      return res.status(400).json({ message: "Missing userId or projectId" });
     }
 
     // Check for duplicate assignment
-    const existing = await AssignedProject.findOne({ user: userId, project: projectId });
+    const existing = await AssignedProject.findOne({
+      user: userId,
+      project: projectId,
+    });
     if (existing) {
-      return res.status(400).json({ message: 'Project already assigned to this user' });
+      return res
+        .status(400)
+        .json({ message: "Project already assigned to this user" });
+    }
+
+    // Project manager additional check: Only allow if manager of project
+    if (req.user.role === "project_manager") {
+      const project = await Project.findById(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      // Check if current user is a manager of this project
+      const isManager = Array.isArray(project.projectManagers) && project.projectManagers.some(
+        manager =>
+          // Handle both object & string IDs for safety
+          (manager?.toString?.() || manager?._id?.toString?.() || manager?.id?.toString?.()) === req.user._id.toString()
+          ||
+          (typeof manager === 'object' && (manager._id === req.user._id || manager.id === req.user._id))
+      );
+      if (!isManager) {
+        return res.status(403).json({ message: "Access denied: You are not a manager for this project." });
+      }
     }
 
     const assignment = await AssignedProject.create({
       user: userId,
       project: projectId,
     });
-
+    // sendProjectAssignmentEmail();
     res.status(201).json({
       success: true,
-      message: 'Project assigned successfully',
+      message: "Project assigned successfully",
       data: assignment,
     });
   } catch (err) {
-    console.error('Assign Project Error:', err);
-    res.status(500).json({ message: 'Failed to assign project', error: err.message });
+    console.error("Assign Project Error:", err);
+    res
+      .status(500)
+      .json({ message: "Failed to assign project", error: err.message });
   }
 };
 
 // ✅ NEW: Deassign project from user
 export const deassignProjectFromUser = async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied: Admins only' });
+  if (req.user.role !== "admin" && req.user.role !== "project_manager") {
+    return res.status(403).json({ message: "Access denied: Admins only" });
   }
 
   try {
@@ -48,38 +78,32 @@ export const deassignProjectFromUser = async (req, res) => {
     if (!assignmentId) {
       return res.status(400).json({
         success: false,
-        message: 'Assignment ID is required'
+        message: "Assignment ID is required",
       });
     }
 
     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid assignment ID format'
+        message: "Invalid assignment ID format",
       });
     }
 
-    // Find the assignment with populated user and project data
     const assignment = await AssignedProject.findById(assignmentId)
-      .populate('user', 'name email')
-      .populate('project', 'name description');
+      .populate("user", "name email")
+      .populate("project", "name description");
 
     if (!assignment) {
       return res.status(404).json({
         success: false,
-        message: 'Assignment not found or already removed'
+        message: "Assignment not found or already removed",
       });
     }
 
-    // Store assignment details for response message
-    const userName = assignment.user?.name || 'Unknown User';
-    const projectName = assignment.project?.name || 'Unknown Project';
+    const userName = assignment.user?.name || "Unknown User";
+    const projectName = assignment.project?.name || "Unknown Project";
 
-    // Delete the assignment
     await AssignedProject.findByIdAndDelete(assignmentId);
-
-    // Optional: Log the deassignment
-    console.log(`Deassigned ${userName} from project "${projectName}"`);
 
     res.status(200).json({
       success: true,
@@ -90,85 +114,86 @@ export const deassignProjectFromUser = async (req, res) => {
           user: {
             id: assignment.user._id,
             name: assignment.user.name,
-            email: assignment.user.email
+            email: assignment.user.email,
           },
           project: {
             id: assignment.project._id,
-            name: assignment.project.name
+            name: assignment.project.name,
           },
-          removedAt: new Date()
-        }
-      }
+          removedAt: new Date(),
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Error deassigning project:', error);
-    
-    // Handle specific errors
-    if (error.name === 'CastError') {
+    console.error("Error deassigning project:", error);
+
+    if (error.name === "CastError") {
       return res.status(400).json({
         success: false,
-        message: 'Invalid assignment ID format'
+        message: "Invalid assignment ID format",
       });
     }
 
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       return res.status(400).json({
         success: false,
-        message: 'Validation error',
-        errors: Object.values(error.errors).map(e => e.message)
+        message: "Validation error",
+        errors: Object.values(error.errors).map((e) => e.message),
       });
     }
 
     res.status(500).json({
       success: false,
-      message: 'Internal server error while deassigning project',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Internal server error while deassigning project",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-
 // ✅ Alternative: Deassign by userId and projectId (if you prefer this approach)
 export const deassignProjectByIds = async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied: Admins only' });
+  if (req.user.role !== "admin" && req.user.role !== "project_manager") {
+    return res.status(403).json({ message: "Access denied: Admins only" });
   }
 
   try {
     const { userId, projectId } = req.body;
 
     if (!userId || !projectId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Missing userId or projectId' 
+        message: "Missing userId or projectId",
       });
     }
 
     // Validate ObjectIds
-    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(projectId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(userId) ||
+      !mongoose.Types.ObjectId.isValid(projectId)
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid userId or projectId format'
+        message: "Invalid userId or projectId format",
       });
     }
 
     // Find and delete the assignment
-    const assignment = await AssignedProject.findOneAndDelete({ 
-      user: userId, 
-      project: projectId 
+    const assignment = await AssignedProject.findOneAndDelete({
+      user: userId,
+      project: projectId,
     })
-    .populate('user', 'name email')
-    .populate('project', 'name description');
+      .populate("user", "name email")
+      .populate("project", "name description");
 
     if (!assignment) {
       return res.status(404).json({
         success: false,
-        message: 'Assignment not found. User may not be assigned to this project.'
+        message:
+          "Assignment not found. User may not be assigned to this project.",
       });
     }
 
-    const userName = assignment.user?.name || 'Unknown User';
-    const projectName = assignment.project?.name || 'Unknown Project';
+    const userName = assignment.user?.name || "Unknown User";
+    const projectName = assignment.project?.name || "Unknown Project";
 
     res.status(200).json({
       success: true,
@@ -178,17 +203,16 @@ export const deassignProjectByIds = async (req, res) => {
           id: assignment._id,
           user: assignment.user,
           project: assignment.project,
-          removedAt: new Date()
-        }
-      }
+          removedAt: new Date(),
+        },
+      },
     });
-
   } catch (error) {
-    console.error('Error deassigning project by IDs:', error);
+    console.error("Error deassigning project by IDs:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error while deassigning project',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Internal server error while deassigning project",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -197,16 +221,19 @@ export const deassignProjectByIds = async (req, res) => {
 export const getAllAssignedProjects = async (req, res) => {
   try {
     const assignments = await AssignedProject.find()
-      .populate('user', 'name email')
-      .populate('project', 'name description');
+      .populate("user", "name email")
+      .populate("project", "name description");
 
     res.status(200).json({
       success: true,
       data: assignments,
     });
   } catch (err) {
-    console.error('Get Assigned Projects Error:', err);
-    res.status(500).json({ message: 'Failed to fetch assigned projects', error: err.message });
+    console.error("Get Assigned Projects Error:", err);
+    res.status(500).json({
+      message: "Failed to fetch assigned projects",
+      error: err.message,
+    });
   }
 };
 
@@ -215,63 +242,63 @@ export const getAssignedProjectsByUserId = async (req, res) => {
   const { userId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: 'Invalid userId' });
+    return res.status(400).json({ message: "Invalid userId" });
   }
 
   try {
     const assignments = await AssignedProject.aggregate([
       {
-        $match: { user: new mongoose.Types.ObjectId(userId) }
+        $match: { user: new mongoose.Types.ObjectId(userId) },
       },
       {
         $lookup: {
-          from: 'projects',
-          localField: 'project',
-          foreignField: '_id',
-          as: 'projectInfo'
-        }
+          from: "projects",
+          localField: "project",
+          foreignField: "_id",
+          as: "projectInfo",
+        },
       },
       {
-        $unwind: '$projectInfo'
+        $unwind: "$projectInfo",
       },
       {
         $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userInfo'
-        }
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo",
+        },
       },
       {
-        $unwind: '$userInfo'
+        $unwind: "$userInfo",
       },
       {
         $project: {
           _id: 1,
           project: {
-            _id: '$projectInfo._id',
-            name: '$projectInfo.name',
-            description: '$projectInfo.description',
-            createdAt: '$projectInfo.createdAt'
+            _id: "$projectInfo._id",
+            name: "$projectInfo.name",
+            description: "$projectInfo.description",
+            createdAt: "$projectInfo.createdAt",
           },
           user: {
-            _id: '$userInfo._id',
-            name: '$userInfo.name',
-            email: '$userInfo.email'
-          }
-        }
-      }
+            _id: "$userInfo._id",
+            name: "$userInfo.name",
+            email: "$userInfo.email",
+          },
+        },
+      },
     ]);
 
     res.status(200).json({
       success: true,
-      data: assignments
+      data: assignments,
     });
   } catch (err) {
-    console.error('Aggregation Error:', err);
+    console.error("Aggregation Error:", err);
     res.status(500).json({
-      message: 'Failed to fetch assigned projects using aggregation',
-      error: err.message
+      message: "Failed to fetch assigned projects using aggregation",
+      error: err.message,
     });
   }
 };
@@ -284,32 +311,98 @@ export const getAssignmentById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid assignment ID format'
+        message: "Invalid assignment ID format",
       });
     }
 
     const assignment = await AssignedProject.findById(assignmentId)
-      .populate('user', 'name email')
-      .populate('project', 'name description');
+      .populate("user", "name email")
+      .populate("project", "name description");
 
     if (!assignment) {
       return res.status(404).json({
         success: false,
-        message: 'Assignment not found'
+        message: "Assignment not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: assignment
+      data: assignment,
     });
-
   } catch (error) {
-    console.error('Get Assignment Error:', error);
+    console.error("Get Assignment Error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch assignment details',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Failed to fetch assignment details",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
+
+// ✅ Get all assigned users by project ID
+export const getAssignedUsersByProjectId = async (req, res) => {
+  const { projectId } = req.params;
+
+  // Validate projectId
+  if (!mongoose.Types.ObjectId.isValid(projectId)) {
+    return res.status(400).json({ message: "Invalid projectId" });
+  }
+
+  try {
+    const assignments = await AssignedProject.aggregate([
+      {
+        $match: { project: new mongoose.Types.ObjectId(projectId) },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "userInfo",
+        },
+      },
+      {
+        $unwind: "$userInfo",
+      },
+      {
+        $lookup: {
+          from: "projects",
+          localField: "project",
+          foreignField: "_id",
+          as: "projectInfo",
+        },
+      },
+      {
+        $unwind: "$projectInfo",
+      },
+      {
+        $project: {
+          _id: 1,
+          user: {
+            _id: "$userInfo._id",
+            name: "$userInfo.name",
+            email: "$userInfo.email",
+          },
+          project: {
+            _id: "$projectInfo._id",
+            name: "$projectInfo.name",
+            description: "$projectInfo.description",
+          },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: assignments,
+    });
+  } catch (err) {
+    console.error("Error fetching assigned users:", err);
+    res.status(500).json({
+      message: "Failed to fetch assigned users for this project",
+      error: err.message,
+    });
+  }
+};
+

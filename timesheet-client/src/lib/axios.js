@@ -1,24 +1,28 @@
+// lib/axios.js
 import axios from 'axios';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  withCredentials: true, // includes cookies (like for sessions)
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Optional: Request interceptor (e.g., add token)
+// Request interceptor: add token if present
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Debugging logs (you can remove after debugging)
+    // console.log('Axios Request Headers:', config.headers);
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Optional: Response interceptor (e.g., handle auth error)
+// Response interceptor: handle 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {

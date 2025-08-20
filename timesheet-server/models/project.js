@@ -30,18 +30,26 @@ const projectSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+
+    projectManagers:[{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    }],
+
     fields: {
       type: [fieldSchema],
       default: () => [
         { name: 'date', fieldType: 'date' },
         { name: 'task', fieldType: 'text' },
         { name: 'workingHours', fieldType: 'number' },
-        { name: 'Frontend/Backend', fieldType: 'text' } 
+        { name: 'Frontend/Backend', fieldType: 'text' }
       ]
     }
   },
   { timestamps: true }
 );
+
 
 const Project = mongoose.model('Project', projectSchema);
 export default Project;

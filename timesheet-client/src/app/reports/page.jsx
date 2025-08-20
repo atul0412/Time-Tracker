@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, Filter, Clock, X, Download } from 'lucide-react'
+import { Calendar, Filter, Clock, X, Download, Users } from 'lucide-react'
 import api from '../../lib/axios'
 import { exportTimesheetToExcel } from '../../lib/exportToExcel'
 
@@ -18,6 +18,11 @@ export default function ReportPage() {
     const [loadingProjects, setLoadingProjects] = useState(false)
     const [errorProjects, setErrorProjects] = useState('')
     const [timesheetsLoading, setTimesheetsLoading] = useState(false)
+
+    // Add states for assigned users
+    const [assignedUsers, setAssignedUsers] = useState([])
+    const [assignedUsersLoading, setAssignedUsersLoading] = useState(false)
+    const [assignedUsersError, setAssignedUsersError] = useState('')
 
     // Date filter states
     const [dateFilter, setDateFilter] = useState('all')
@@ -58,26 +63,77 @@ export default function ReportPage() {
 
     // Fetch all projects (project view)
     useEffect(() => {
-        if (viewMode !== 'project') return
+        if (viewMode !== 'project') return;
 
         const fetchAllProjects = async () => {
-            setLoadingProjects(true)
+            setLoadingProjects(true);
             try {
-                const res = await api.get('/projects/allproject')
-                const projectsArray =
+                const res = await api.get('/projects/allproject');
+
+                const rawData =
                     Array.isArray(res.data) ? res.data :
                         Array.isArray(res.data?.data) ? res.data.data :
-                            Array.isArray(res.data?.projects) ? res.data.projects : []
-                setProjects(projectsArray)
+                            Array.isArray(res.data?.projects) ? res.data.projects : [];
+
+                // Extract only the project objects
+                const projectsArray = rawData.map(item => item.project || item);
+
+                setProjects(projectsArray);
             } catch (err) {
-                console.error('❌ Error fetching projects:', err)
-                setErrorProjects(err?.response?.data?.message || 'Failed to load projects')
+                console.error('❌ Error fetching projects:', err);
+                setErrorProjects(err?.response?.data?.message || 'Failed to load projects');
             } finally {
-                setLoadingProjects(false)
+                setLoadingProjects(false);
+            }
+        };
+
+        fetchAllProjects();
+    }, [viewMode]);
+
+
+    // Fetch assigned users when a project is selected in project view
+    // Fetch assigned users when a project is selected in project view
+    useEffect(() => {
+        if (viewMode !== 'project' || !selectedProject?._id) {
+            setAssignedUsers([])
+            return
+        }
+
+        const fetchAssignedUsers = async () => {
+            setAssignedUsersLoading(true)
+            setAssignedUsersError('')
+            try {
+                // Use your existing API endpoint for getting assigned users by project ID
+                const response = await api.get(`/assignProject/assigned-users/${selectedProject._id}`)
+
+                console.log('Fetched assigned users:', response.data)
+
+                // Handle different possible response structures
+                const users = response.data?.data || response.data || []
+                setAssignedUsers(users)
+
+            } catch (err) {
+                console.error('Failed to fetch assigned users:', err)
+
+                // More specific error handling
+                if (err.response?.status === 404) {
+                    setAssignedUsersError('No assigned users found for this project')
+                    setAssignedUsers([])
+                } else if (err.response?.status === 403) {
+                    setAssignedUsersError('Access denied to view assigned users')
+                } else if (err.response?.status === 500) {
+                    setAssignedUsersError('Server error while loading assigned users')
+                } else {
+                    setAssignedUsersError('Failed to load assigned users')
+                }
+            } finally {
+                setAssignedUsersLoading(false)
             }
         }
-        fetchAllProjects()
-    }, [viewMode])
+
+        fetchAssignedUsers()
+    }, [viewMode, selectedProject?._id])
+
 
     // Fetch timesheets when relevant dependencies change
     useEffect(() => {
@@ -287,6 +343,7 @@ export default function ReportPage() {
                                     setSelectedUser(null)
                                     setSelectedProject(null)
                                     setTimesheets([])
+                                    setAssignedUsers([])
                                 }}
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
@@ -307,6 +364,7 @@ export default function ReportPage() {
                                     setSelectedUser(null)
                                     setSelectedProject(null)
                                     setTimesheets([])
+                                    setAssignedUsers([])
                                 }}
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
@@ -354,12 +412,15 @@ export default function ReportPage() {
                                 <option value="" disabled>
                                     Choose a user to view their timesheets
                                 </option>
-                                {users.map((user) => (
-                                    <option key={user._id} value={user._id}>
-                                        {user.name}
-                                    </option>
-                                ))}
+                                {users
+                                    .filter((user) => user.role !== "admin") // 🚫 Exclude admins
+                                    .map((user) => (
+                                        <option key={user._id} value={user._id}>
+                                            {user.name}
+                                        </option>
+                                    ))}
                             </select>
+
                         )}
                     </div>
                 )}
@@ -446,6 +507,73 @@ export default function ReportPage() {
                     </div>
                 )}
 
+                {/* Assigned Users List (Project View Only) */}
+                {viewMode === 'project' && selectedProject && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <Users className="w-5 h-5 mr-2 text-purple-600" />
+                            Assigned Users
+                            {assignedUsers.length > 0 && (
+                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                    {assignedUsers.length} users
+                                </span>
+                            )}
+                        </h2>
+
+                        {assignedUsersLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                <span className="ml-2 text-gray-600">Loading assigned users...</span>
+                            </div>
+                        ) : assignedUsersError ? (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div className="flex items-center">
+                                    <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div className="ml-3">
+                                        <p className="text-red-600 text-sm">{assignedUsersError}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : assignedUsers.length === 0 ? (
+                            <div className="text-center py-8">
+                                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No users assigned</h3>
+                                <p className="text-gray-500">This project doesn't have any assigned users yet.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {assignedUsers.map((assignment, index) => {
+                                    // Fix: Access the nested user object from the assignment
+                                    const user = assignment.user || assignment;
+                                    const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
+                                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+                                    return (
+                                        <div key={user._id || assignment._id || index} className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
+                                                {initials}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
+                                                {user.email && (
+                                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                                )}
+                                                {user.role && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                                                        {user.role}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Assigned Projects Grid (user view only) */}
                 {viewMode === 'user' && selectedUser && assignedProjects.length > 0 && (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -487,6 +615,7 @@ export default function ReportPage() {
                     </div>
                 )}
 
+                {/* Rest of your component remains the same - Timesheet Table, etc. */}
                 {/* Timesheet Table (shown in BOTH views with correct selections) */}
                 {(viewMode === 'project' && selectedProject) ||
                     (viewMode === 'user' && selectedUser && selectedProject) ? (
@@ -510,7 +639,6 @@ export default function ReportPage() {
                                             <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
                                         </div>
                                         {/* Fixed Export button */}
-                                        {/* Fixed Export button with debugging */}
                                         <button
                                             onClick={() => {
                                                 console.log('Export button clicked');
@@ -549,8 +677,6 @@ export default function ReportPage() {
                                             <Download className="w-5 h-5" />
                                             Export
                                         </button>
-
-
                                     </div>
                                 )}
                             </div>
@@ -760,7 +886,6 @@ export default function ReportPage() {
                         </div>
                     </div>
                 ) : null}
-
             </div>
             {/* Custom scrollbar styles */}
             <style jsx>{`

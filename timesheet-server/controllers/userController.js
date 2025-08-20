@@ -20,6 +20,19 @@ export const registerUser = async (req, res) => {
       role: role || 'user',
     });
 
+     const payload = {
+      id: user._id,
+      email: user.email
+    };
+
+  const encryptedToken = encodeURIComponent(encrypt(payload));
+    // console.log(encryptedToken)
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
+
+    // const message = `Click this link to reset your password: ${resetUrl}`;
+
+    await sendEmail(user.email, "Reset Password", resetUrl);
+
     res.status(201).json({ message: 'User registered successfully', userId: user._id });
   } catch (err) {
     console.error(err);
@@ -50,8 +63,9 @@ export const loginUser = async (req, res) => {
 // Get all users (admin only)
 export const getAllUsers = async (req, res) => {
   try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied: Admins only' });
+    // Allow only admins and project managers
+    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'project_manager')) {
+      return res.status(403).json({ message: 'Access denied: Only admins and project managers allowed' });
     }
 
     const users = await User.find().select('-password');
@@ -61,6 +75,7 @@ export const getAllUsers = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch users', error: err.message });
   }
 };
+
 
 // ✅ Delete user (admin only)
 export const deleteUser = async (req, res) => {
@@ -167,7 +182,7 @@ export const forgotPassword = async (req, res) => {
     };
 
   const encryptedToken = encodeURIComponent(encrypt(payload));
-    console.log(encryptedToken)
+    // console.log(encryptedToken)
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
 
     // const message = `Click this link to reset your password: ${resetUrl}`;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '../../../lib/axios';
+import Select from 'react-select';
 import toast from 'react-hot-toast';
 import {
   Pencil,
@@ -12,6 +13,7 @@ import {
   Calendar,
   Clock,
   User,
+  Users, // Add this import
   FileText,
   Settings,
   ArrowLeft,
@@ -43,18 +45,23 @@ export default function ProjectDetailsPage() {
   const [addFormData, setAddFormData] = useState({});
   const [addLoading, setAddLoading] = useState(false);
 
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(false);
+
   const [editingProject, setEditingProject] = useState(false);
   const [projectFormData, setProjectFormData] = useState({
     name: '',
     description: '',
     fields: [],
+    projectManagers: [],
   });
   const [editProjectLoading, setEditProjectLoading] = useState(false);
 
   // Delete confirmation states
   const [deleteConfirmation, setDeleteConfirmation] = useState({
     show: false,
-    type: '', // 'project' or 'timesheet'
+    type: '',
     id: null,
     title: '',
     message: '',
@@ -80,12 +87,21 @@ export default function ProjectDetailsPage() {
           api.get(`/projects/${id}`),
           api.get(`/timesheets/project/${id}`),
         ]);
-        setProject(projectRes.data.data || projectRes.data);
+
+        const projectData = projectRes.data.data || projectRes.data;
+        setProject(projectData);
+
+        // Initialize project form data when project is loaded
+        if (projectData) {
+          initializeProjectFormData(projectData);
+        }
+
         const sortedTimesheets = (timesheetRes.data || []).sort(
           (a, b) => new Date(a.data?.date) - new Date(b.data?.date)
         );
         setTimesheets(sortedTimesheets);
-        console.log(sortedTimesheets);
+        console.log('Project data:', projectData);
+        console.log('Timesheets:', sortedTimesheets);
       } catch (err) {
         setError(err?.response?.data?.message || 'Failed to load project or timesheets');
       } finally {
@@ -120,6 +136,70 @@ export default function ProjectDetailsPage() {
       setAddFormData(initialData);
     }
   }, [addingEntry, project]);
+
+  // Fetch users when project loads
+ useEffect(() => {
+  if (id && user && (user.role === "admin" || user.role === "project_manager")) {
+  fetchUsers(id);
+}
+}, [id, user?.role]);
+
+
+  // Add this function to fetch users
+  const fetchUsers = async (projectId) => {
+    try {
+      setUsersLoading(true);
+      setUsersError(false);
+      if (!projectId) {
+        console.error('Project ID is required');
+        setUsersError(true);
+        toast.error('Project ID is required to fetch users');
+        return;
+      }
+      // Try assigned-users endpoint, fallback to all users
+      let response;
+      try {
+       response = await api.get('/users/getAlluser');
+      } catch {
+        console.error('Failed to fetch assigned users, falling back to all users');
+      }
+      const userOptions = response.data.map(user => ({
+        value: user._id || user.id,
+        label: user.name || user.email || 'Unknown User',
+        email: user.email || '',
+        role: user.role || 'User'
+      }));
+      setUsers(userOptions);
+    } catch (error) {
+      setUsersError(true);
+      if (error.response?.status === 404) {
+        toast.error('Project not found or no assigned users');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied to view assigned users');
+      } else {
+        toast.error('Failed to load users');
+      }
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  // Initialize project form data when project is loaded
+  const initializeProjectFormData = (project) => {
+    const existingManagers = project.projectManagersDetails || project.projectManagers || [];
+    const formattedManagers = existingManagers.map(manager => ({
+      value: manager._id || manager.id,
+      label: manager.name || manager.email || 'Unknown User',
+      email: manager.email || ''
+    }));
+
+    setProjectFormData({
+      name: project.name || '',
+      description: project.description || '',
+      fields: project.fields || [],
+      projectManagers: formattedManagers
+    });
+  };
 
   // Show delete confirmation
   const showDeleteConfirmation = (type, itemId, title, message) => {
@@ -247,7 +327,7 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br  flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">Loading project details...</p>
@@ -278,7 +358,7 @@ export default function ProjectDetailsPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 text-lg">No project found</p>
@@ -290,10 +370,11 @@ export default function ProjectDetailsPage() {
   const grouped = groupByDate(timesheets);
 
   const filteredFields = project.fields?.filter(
-    (field) => field.fieldName != "Developer Name"
+    (field) => field.fieldName !== "Developer Name"
   );
 
-  console.log(project, filteredFields);
+  // console.log('Current project:', project);
+  // console.log('Filtered fields:', filteredFields);
 
   return (
     <div className="min-h-screen bg-gradient-to-br">
@@ -321,6 +402,49 @@ export default function ProjectDetailsPage() {
                 </div>
                 <p className="text-gray-600 mb-4">{project.description || "No description available"}</p>
 
+                {/* Project Managers Card */}
+                {project.projectManagers && project.projectManagers.length > 0 && (
+                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-4 h-4 text-purple-600" />
+                      <h3 className="text-sm font-semibold text-purple-900">
+                        Project Managers ({project.projectManagers.length})
+                      </h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {project.projectManagersDetails.map((manager, index) => {
+                        const initials = manager?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                        return (
+                          <div
+                            key={manager._id || manager.id || index}
+                            className="flex items-center gap-2 bg-white px-3 py-2 rounded-full border border-purple-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                          >
+                            <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                              {initials}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{manager?.name}</span>
+                            {manager?.email && (
+                              <span className="text-xs text-gray-500 hidden sm:inline">
+                                ({manager?.email})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* No Project Managers Fallback */}
+                {(!project.projectManagers || project.projectManagers.length === 0) && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">No project managers assigned</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Project Stats */}
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center gap-1 text-gray-500">
@@ -338,24 +462,21 @@ export default function ProjectDetailsPage() {
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={openAddModal}
-                  className="flex items-center gap-2 bg-purple-800 text-white px-4 py-2 rounded-lg hover:bg-purple-900 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-200 shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Add Entry
                 </button>
 
-                {userRole === 'admin' && (
+                {(userRole === 'admin' || userRole === 'project_manager') &&  (
                   <>
                     <button
                       onClick={() => {
-                        setProjectFormData({
-                          name: project.name || '',
-                          description: project.description || '',
-                          fields: project.fields || [],
-                        });
+                        // Initialize project form data when opening edit modal
+                        initializeProjectFormData(project);
                         setEditingProject(true);
                       }}
-                      className="flex items-center gap-2 bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900 transition-all duration-200 shadow-sm"
+                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm"
                     >
                       <Settings className="w-4 h-4" />
                       Edit Project
@@ -364,7 +485,7 @@ export default function ProjectDetailsPage() {
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="flex items-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg hover:bg-red-900 transition-all duration-200 shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete Project
@@ -374,7 +495,7 @@ export default function ProjectDetailsPage() {
 
                 <button
                   onClick={() => exportTimesheetToExcel(project, timesheets)}
-                  className="flex items-center gap-2 bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-900 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm"
                 >
                   <Download className="w-4 h-4" />
                   Export
@@ -384,6 +505,7 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
 
+        {/* Rest of your component remains exactly the same */}
         {/* Timesheets Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
@@ -560,6 +682,7 @@ export default function ProjectDetailsPage() {
         </div>
       </div>
 
+      {/* All your existing modals remain the same */}
       {/* Delete Confirmation Modal */}
       {deleteConfirmation.show && (
         <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -610,176 +733,175 @@ export default function ProjectDetailsPage() {
       )}
 
       {/* Edit Timesheet Modal */}
-     {editingEntry && (
-  <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
-          <button
-            onClick={closeEditModal}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="p-6 space-y-4">
-        {/* Date field with formatted display */}
-        {formData.date && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Entry Date
-              <span className="text-xs text-purple-600 font-normal ml-1">*</span>
-            </label>
-            <div className="relative">
-              <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
-                <span className="flex items-center gap-2">
-                  {formatDateToReadable(formData.date)}
-                </span>
-                <span className="text-purple-600 text-sm flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                </span>
+      {editingEntry && (
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              
-              {/* Invisible date input overlay for editing */}
-              <input
-                type="date"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                value={formData.date.slice(0, 10)}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    date: e.target.value,
-                  }))
-                }
-              />
             </div>
-          </div>
-        )}
 
-        {/* Other fields */}
-        {Object.entries(formData).map(([key, value]) => {
-          if (key === 'date') return null;
+            <div className="p-6 space-y-4">
+              {/* Date field with formatted display */}
+              {formData.date && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Entry Date
+                    <span className="text-xs text-purple-600 font-normal ml-1">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
+                      <span className="flex items-center gap-2">
+                        {formatDateToReadable(formData.date)}
+                      </span>
+                      <span className="text-purple-600 text-sm flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                      </span>
+                    </div>
 
-          const isTaskField = key.toLowerCase() === 'task';
-          const isDateField = key.toLowerCase().includes('date');
-          const inputType =
-            typeof value === 'number' || key.toLowerCase().includes('hours')
-              ? 'number'
-              : isDateField
-              ? 'date'
-              : 'text';
-
-          return (
-            <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-                {key.replace(/_/g, ' ')}
-                {isDateField && (
-                  <span className="text-xs text-purple-600 font-normal ml-1">*</span>
-                )}
-              </label>
-              
-              {isTaskField ? (
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-                  value={value}
-                  placeholder="Describe what you worked on..."
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
-                  }
-                />
-              ) : isDateField ? (
-                // ✅ Format other date fields too
-                <div className="relative">
-                  <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
-                    <span className="flex items-center gap-2">
-                      {value ? formatDateToReadable(value) : 'Select date'}
-                    </span>
-                    <span className="text-purple-600 text-sm flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                    </span>
+                    {/* Invisible date input overlay for editing */}
+                    <input
+                      type="date"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      value={formData.date.slice(0, 10)}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          date: e.target.value,
+                        }))
+                      }
+                    />
                   </div>
-                  
-                  <input
-                    type="date"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    value={value || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
-                  />
                 </div>
-              ) : (
-                <input
-                  type={inputType}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={value || ''}
-                  placeholder={
-                    inputType === 'number' 
-                      ? "Enter number..." 
-                      : `Enter ${key.toLowerCase().replace(/_/g, ' ')}...`
-                  }
-                  onChange={(e) => {
-                    const newValue = inputType === 'number' 
-                      ? (e.target.value === "" ? "" : Number(e.target.value))
-                      : e.target.value;
-                    setFormData((prev) => ({
-                      ...prev,
-                      [key]: newValue,
-                    }));
-                  }}
-                />
               )}
-            </div>
-          );
-        })}
-      </div>
 
-      <div className="p-6 border-t border-gray-200 bg-gray-50">
-        <div className="flex justify-end items-center">
-          <div className="flex gap-3">
-            <button
-              onClick={closeEditModal}
-              disabled={editLoading}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleEditSubmit}
-              disabled={editLoading}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              {editLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Update Entry
-                </>
-              )}
-            </button>
+              {/* Other fields */}
+              {Object.entries(formData).map(([key, value]) => {
+                if (key === 'date') return null;
+
+                const isTaskField = key.toLowerCase() === 'task';
+                const isDateField = key.toLowerCase().includes('date');
+                const inputType =
+                  typeof value === 'number' || key.toLowerCase().includes('hours')
+                    ? 'number'
+                    : isDateField
+                      ? 'date'
+                      : 'text';
+
+                return (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
+                      {key.replace(/_/g, ' ')}
+                      {isDateField && (
+                        <span className="text-xs text-purple-600 font-normal ml-1">*</span>
+                      )}
+                    </label>
+
+                    {isTaskField ? (
+                      <textarea
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
+                        value={value}
+                        placeholder="Describe what you worked on..."
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : isDateField ? (
+                      <div className="relative">
+                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
+                          <span className="flex items-center gap-2">
+                            {value ? formatDateToReadable(value) : 'Select date'}
+                          </span>
+                          <span className="text-purple-600 text-sm flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                          </span>
+                        </div>
+
+                        <input
+                          type="date"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          value={value || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              [key]: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type={inputType}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        value={value || ''}
+                        placeholder={
+                          inputType === 'number'
+                            ? "Enter number..."
+                            : `Enter ${key.toLowerCase().replace(/_/g, ' ')}...`
+                        }
+                        onChange={(e) => {
+                          const newValue = inputType === 'number'
+                            ? (e.target.value === "" ? "" : Number(e.target.value))
+                            : e.target.value;
+                          setFormData((prev) => ({
+                            ...prev,
+                            [key]: newValue,
+                          }));
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-end items-center">
+                <div className="flex gap-3">
+                  <button
+                    onClick={closeEditModal}
+                    disabled={editLoading}
+                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEditSubmit}
+                    disabled={editLoading}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {editLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Update Entry
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Add Timesheet Modal */}
       {addingEntry && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -814,16 +936,13 @@ export default function ProjectDetailsPage() {
                 const fieldValue = addFormData[field.fieldName];
                 const isTaskField = field.fieldName.toLowerCase().includes("task");
 
-                // ✅ For date fields, use formatted date directly as display value
                 const inputValue = (() => {
                   if (fieldValue !== undefined) {
                     if (isDate && fieldValue) {
-                      // Show formatted date directly
                       return formatDateToReadable(fieldValue);
                     }
                     return fieldValue;
                   }
-                  // Default value for new entries - show today's date formatted
                   return isDate ? formatDateToReadable(new Date()) : "";
                 })();
 
@@ -865,9 +984,8 @@ export default function ProjectDetailsPage() {
                         }
                       />
                     ) : isDate ? (
-                      // ✅ Enhanced date field with formatted display and editing capability
                       <div className="relative">
-                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-black-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
+                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-black font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
                           <span className="flex items-center gap-2">
                             {inputValue}
                           </span>
@@ -876,7 +994,6 @@ export default function ProjectDetailsPage() {
                           </span>
                         </div>
 
-                        {/* Invisible date input overlay for editing */}
                         <input
                           type="date"
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -954,222 +1071,309 @@ export default function ProjectDetailsPage() {
         </div>
       )}
 
-
-
       {/* Edit Project Modal */}
-   {editingProject && (
-  <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
-        <button
-          onClick={() => setEditingProject(false)}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="p-6 space-y-6">
-        {/* Project Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
-          <input
-            type="text"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            value={projectFormData.name}
-            onChange={(e) =>
-              setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-          <textarea
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-            value={projectFormData.description}
-            onChange={(e) =>
-              setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
-            }
-          />
-        </div>
-
-        {/* Custom Fields Only */}
-        <div>
-          <h4 className="text-lg font-medium text-gray-900 mb-4">Custom Fields</h4>
-          
-          {/* ✅ Filter out ALL default fields */}
-          {projectFormData.fields
-            ?.filter((field) => {
-              const defaultFields = [
-                "task", 
-                "date", 
-                "Effort Hours", 
-                "Frontend/Backend",
-                "Developer Name",
-                "Task",
-              ];
-              return !defaultFields.includes(field.fieldName);
-            })
-            .map((field, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg mb-4 border border-gray-200">
-                <div className="flex justify-between items-center mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Custom Field {index + 1}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = projectFormData.fields.filter((_, i) => {
-                        const customFields = projectFormData.fields.filter(f => {
-                          const defaultFields = [
-                            "task", "date", "workingHours", "Frontend/Backend",
-                            "Developer Name", "Task", "Date", "Working Hours"
-                          ];
-                          return !defaultFields.includes(f.fieldName);
-                        });
-                        return i !== customFields.findIndex(cf => cf.fieldName === field.fieldName);
-                      });
-                      setProjectFormData((prev) => ({
-                        ...prev,
-                        fields: updated,
-                      }));
-                    }}
-                    className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
-                    title="Delete field"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    placeholder="Field Name"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    value={field.fieldName}
-                    onChange={(e) => {
-                      const updated = [...projectFormData.fields];
-                      const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
-                      if (actualIndex !== -1) {
-                        updated[actualIndex].fieldName = e.target.value;
-                        setProjectFormData((prev) => ({
-                          ...prev,
-                          fields: updated,
-                        }));
-                      }
-                    }}
-                  />
-                  <select
-                    className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    value={field.fieldType}
-                    onChange={(e) => {
-                      const updated = [...projectFormData.fields];
-                      const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
-                      if (actualIndex !== -1) {
-                        updated[actualIndex].fieldType = e.target.value;
-                        setProjectFormData((prev) => ({
-                          ...prev,
-                          fields: updated,
-                        }));
-                      }
-                    }}
-                  >
-                    <option value="String">String</option>
-                    <option value="Number">Number</option>
-                    <option value="Date">Date</option>
-                    <option value="Boolean">Boolean</option>
-                  </select>
-                </div>
-              </div>
-            ))}
-
-          {/* Show message if no custom fields */}
-          {projectFormData.fields?.filter((field) => {
-            const defaultFields = [
-              "task", "date", "workingHours", "Frontend/Backend",
-              "Developer Name", "Task", "Date", "Working Hours"
-            ];
-            return !defaultFields.includes(field.fieldName);
-          }).length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-              <p>No custom fields added yet</p>
-              <p className="text-sm">Click "Add Custom Field" to create one</p>
+      {editingProject && (
+        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
+              <button
+                onClick={() => setEditingProject(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
-        </div>
 
-        {/* Add New Field Button */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setProjectFormData((prev) => ({
-                ...prev,
-                fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
-              }));
-            }}
-            className="px-4 py-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Custom Field
-          </button>
-        </div>
-      </div>
+            <div className="p-6 space-y-6">
+              {/* Project Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={projectFormData.name}
+                  onChange={(e) =>
+                    setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                />
+              </div>
 
-      {/* Footer */}
-      <div className="p-6 border-t border-gray-200 bg-gray-50">
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => setEditingProject(false)}
-            disabled={editProjectLoading}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                setEditProjectLoading(true);
-                await api.put(`/projects/${id}`, projectFormData);
-                toast.success("Project updated");
-                setProject((prev) => ({
-                  ...prev,
-                  ...projectFormData,
-                }));
-                setEditingProject(false);
-              } catch (err) {
-                toast.error(
-                  err?.response?.data?.message || "Failed to update project"
-                );
-              } finally {
-                setEditProjectLoading(false);
-              }
-            }}
-            disabled={editProjectLoading}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            {editProjectLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save Changes
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
+                  value={projectFormData.description}
+                  onChange={(e) =>
+                    setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                />
+              </div>
 
+              {/* Project Managers Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Project Managers *
+                </label>
+                <Select
+                  isMulti
+                  options={users}
+                  value={projectFormData.projectManagers || []}
+                  onChange={(selectedOptions) => {
+                    setProjectFormData((prev) => ({
+                      ...prev,
+                      projectManagers: selectedOptions || []
+                    }));
+                  }}
+                  placeholder="Select project managers..."
+                  isLoading={usersLoading}
+                  isDisabled={usersLoading}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  isSearchable
+                  isClearable
+                  closeMenuOnSelect={true}
+                  hideSelectedOptions={false}
+                  blurInputOnSelect={false}
+                  noOptionsMessage={() =>
+                    <div className="text-gray-500 text-sm py-2 px-3">
+                      {usersError ? 'Error loading users' : 'No users found'}
+                    </div>
+                  }
+                  loadingMessage={() =>
+                    <div className="text-gray-500 text-sm py-2 px-3 flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      Loading users...
+                    </div>
+                  }
+                  formatOptionLabel={(option) => {
+                    if (!option) return null;
+                    const displayName = option.label || 'Unknown User';
+                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                    return (
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="w-7 h-7 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                          {initials}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900 text-sm">{displayName}</span>
+                          <span className="text-xs text-gray-500">{option.email || 'No email'}</span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                  getOptionLabel={option => option.label}
+                  getOptionValue={option => option.value}
+                />
+
+                {/* Selected Project Managers Preview */}
+                {projectFormData.projectManagers && projectFormData.projectManagers.length > 0 && (
+                  <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="text-sm text-purple-700 font-medium mb-2">
+                      Selected Project Managers ({projectFormData.projectManagers.length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {projectFormData.projectManagers.map((manager, index) => {
+                        const displayName = manager.label || 'Unknown User';
+                        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                        return (
+                          <div key={manager.value || index} className="flex items-center gap-2 bg-white px-2 py-1 rounded-full border border-purple-200 text-sm">
+                            <div className="w-4 h-4 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                              {initials}
+                            </div>
+                            <span className="text-gray-700">{displayName}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Fields Only */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Custom Fields</h4>
+
+                {/* Filter out ALL default fields */}
+                {projectFormData.fields
+                  ?.filter((field) => {
+                    const defaultFields = [
+                      "task",
+                      "date",
+                      "Effort Hours",
+                      "Frontend/Backend",
+                      "Developer Name",
+                      "Task",
+                    ];
+                    return !defaultFields.includes(field.fieldName);
+                  })
+                  .map((field, index) => (
+                    <div key={index} className="p-4 bg-gray-50 rounded-lg mb-4 border border-gray-200">
+                      <div className="flex justify-between items-center mb-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Custom Field {index + 1}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = projectFormData.fields.filter((_, i) => {
+                              const customFields = projectFormData.fields.filter(f => {
+                                const defaultFields = [
+                                  "task", "date", "workingHours", "Frontend/Backend",
+                                  "Developer Name", "Task", "Date", "Working Hours"
+                                ];
+                                return !defaultFields.includes(f.fieldName);
+                              });
+                              return i !== customFields.findIndex(cf => cf.fieldName === field.fieldName);
+                            });
+                            setProjectFormData((prev) => ({
+                              ...prev,
+                              fields: updated,
+                            }));
+                          }}
+                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
+                          title="Delete field"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="text"
+                          placeholder="Field Name"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          value={field.fieldName}
+                          onChange={(e) => {
+                            const updated = [...projectFormData.fields];
+                            const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
+                            if (actualIndex !== -1) {
+                              updated[actualIndex].fieldName = e.target.value;
+                              setProjectFormData((prev) => ({
+                                ...prev,
+                                fields: updated,
+                              }));
+                            }
+                          }}
+                        />
+                        <select
+                          className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          value={field.fieldType}
+                          onChange={(e) => {
+                            const updated = [...projectFormData.fields];
+                            const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
+                            if (actualIndex !== -1) {
+                              updated[actualIndex].fieldType = e.target.value;
+                              setProjectFormData((prev) => ({
+                                ...prev,
+                                fields: updated,
+                              }));
+                            }
+                          }}
+                        >
+                          <option value="String">String</option>
+                          <option value="Number">Number</option>
+                          <option value="Date">Date</option>
+                          <option value="Boolean">Boolean</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+
+                {/* Show message if no custom fields */}
+                {projectFormData.fields?.filter((field) => {
+                  const defaultFields = [
+                    "task", "date", "workingHours", "Frontend/Backend",
+                    "Developer Name", "Task", "Date", "Working Hours"
+                  ];
+                  return !defaultFields.includes(field.fieldName);
+                }).length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p>No custom fields added yet</p>
+                      <p className="text-sm">Click "Add Custom Field" to create one</p>
+                    </div>
+                  )}
+              </div>
+
+              {/* Add New Field Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectFormData((prev) => ({
+                      ...prev,
+                      fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
+                    }));
+                  }}
+                  className="px-4 py-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Custom Field
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setEditingProject(false)}
+                  disabled={editProjectLoading}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      setEditProjectLoading(true);
+
+                      // Transform project managers to just IDs for backend
+                      const submitData = {
+                        ...projectFormData,
+                        projectManagers: projectFormData.projectManagers?.map(pm => pm.value) || []
+                      };
+
+                      await api.put(`/projects/${id}`, submitData);
+                      toast.success("Project updated successfully");
+
+                      // Update the project state with the new data
+                      const freshProjectRes = await api.get(`/projects/${id}`);
+                      const freshProjectData = freshProjectRes.data.data || freshProjectRes.data;
+                      setProject(freshProjectData);
+                      initializeProjectFormData(freshProjectData);
+
+                      setEditingProject(false);
+                    } catch (err) {
+                      toast.error(
+                        err?.response?.data?.message || "Failed to update project"
+                      );
+                    } finally {
+                      setEditProjectLoading(false);
+                    }
+                  }}
+                  disabled={editProjectLoading}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {editProjectLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

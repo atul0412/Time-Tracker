@@ -454,8 +454,8 @@ This is an automated message, please do not reply to this email.
 };
 
 const sendResetPasswordEmail = async (to, name = "User", url) => {
-  console.log("Sending password reset email to:", to);
-  console.log("Reset URL:", url);
+  // console.log("Sending password reset email to:", to);
+  // console.log("Reset URL:", url);
   
   const subject = "Reset Your Password - Time-Tracker";
   const html = getResetPasswordHtmlTemplate(url, name);
@@ -469,7 +469,7 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
       text,
       html,
     });
-    console.log("Password reset email sent successfully");
+    // console.log("Password reset email sent successfully");
   } catch (error) {
     console.error("Error sending password reset email:", error);
     throw error;

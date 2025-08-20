@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { 
-  Users, 
-  FolderOpen, 
-  Plus, 
+import {
+  Users,
+  FolderOpen,
+  Plus,
   Eye,
   UserCheck,
   Settings,
@@ -19,6 +19,7 @@ import api from '../../lib/axios';
 import toast from 'react-hot-toast';
 import UserAssignmentsModal from './userAssignment';
 
+
 const AssignProjectPage = () => {
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -27,12 +28,57 @@ const AssignProjectPage = () => {
   const [selectedProject, setSelectedProject] = useState('');
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
-  const [deassigning, setDeassigning] = useState({}); // Track deassigning state for each assignment
+  const [deassigning, setDeassigning] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBy] = useState('all');
   const [modalUser, setModalUser] = useState(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [confirmDeassign, setConfirmDeassign] = useState(null); // For confirmation dialog
+  const [confirmDeassign, setConfirmDeassign] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // ✅ Get logged in user from token or backend
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setCurrentUser({
+            _id: payload.userId || payload.id || payload.sub,
+            role: payload.role || 'admin',
+            name: payload.name || 'User',
+            email: payload.email || 'user@example.com'
+          });
+          return;
+        } catch (decodeError) {
+          console.error('Failed to decode token:', decodeError);
+        }
+      }
+      // Replace or add endpoints as your backend provides
+      const possibleEndpoints = [
+        '/auth/me',
+        '/user/me',
+        '/users/me',
+        '/auth/current',
+        '/api/auth/me'
+      ];
+      for (const endpoint of possibleEndpoints) {
+        try {
+          const response = await api.get(endpoint);
+          setCurrentUser(response.data.user || response.data);
+          return;
+        } catch (err) {
+          if (err.response?.status !== 404) console.error(`Error with ${endpoint}:`, err);
+          continue;
+        }
+      }
+      setCurrentUser({ _id: 'default-admin', role: 'admin', name: 'Default Admin', email: 'admin@example.com' });
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+      setCurrentUser({ _id: 'default-admin', role: 'admin', name: 'Default Admin', email: 'admin@example.com' });
+    }
+  };
+
 
   const fetchData = async () => {
     try {
@@ -41,17 +87,14 @@ const AssignProjectPage = () => {
         api.get('/projects/allProject'),
         api.get('/assignProject/allAssigned'),
       ]);
-
       const fetchedUsers = userRes.data.users || userRes.data.data || userRes.data;
       setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
-
       const fetchedProjects = projectRes.data.data || projectRes.data.projects || projectRes.data;
       setProjects(Array.isArray(fetchedProjects) ? fetchedProjects : []);
-
       const fetchedAssignments = assignmentRes.data.assignments || assignmentRes.data.data || assignmentRes.data;
       setAssignments(Array.isArray(fetchedAssignments) ? fetchedAssignments : []);
-
     } catch (error) {
+      console.error('Error fetching data:', error);
       toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
@@ -59,18 +102,53 @@ const AssignProjectPage = () => {
   };
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchData();
   }, []);
 
-  // ✅ Check if user is already assigned to the project
+  // Only show users with role "user"
+  const filteredUsers = users.filter(user => user.role === 'user' || user.role === 'User');
+
+  // Only show projects assigned to the project manager, or all if admin
+  const filteredProjects = () => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'admin' || currentUser.role === 'Admin') return projects;
+    if (currentUser.role === 'projectManager' || currentUser.role === 'project_manager') {
+      const userAssignedProjects = assignments
+        .filter(assignment => assignment.user?._id === currentUser._id)
+        .map(assignment => assignment.project?._id)
+        .filter(Boolean);
+      return projects.filter(projectData => userAssignedProjects.includes(projectData.project._id));
+    }
+    return projects;
+  };
+
+  // Only show assignments for managed projects, or all if admin
+  const getFilteredAssignments = () => {
+    if (!currentUser) return [];
+    const validAssignments = assignments.filter(
+      (a) => a.user && a.user._id && a.project && a.project._id
+    );
+    if (currentUser.role === 'admin' || currentUser.role === 'Admin') return validAssignments;
+    if (currentUser.role === 'projectManager' || currentUser.role === 'project_manager') {
+      const userAssignedProjects = assignments
+        .filter(assignment => assignment.user?._id === currentUser._id)
+        .map(assignment => assignment.project?._id)
+        .filter(Boolean);
+      return validAssignments.filter(assignment => userAssignedProjects.includes(assignment.project?._id));
+    }
+    return validAssignments;
+  };
+
   const isUserAlreadyAssigned = (userId, projectId) => {
-    return activeAssignments.some(assignment => 
+    const activeAssignments = getFilteredAssignments();
+    return activeAssignments.some(assignment =>
       assignment.user?._id === userId && assignment.project?._id === projectId
     );
   };
 
-  // ✅ Get user projects for validation message
   const getUserAssignedProjects = (userId) => {
+    const activeAssignments = getFilteredAssignments();
     return activeAssignments
       .filter(assignment => assignment.user?._id === userId)
       .map(assignment => assignment.project?.name)
@@ -83,22 +161,15 @@ const AssignProjectPage = () => {
       toast.error('Please select both user and project');
       return;
     }
-
-    // ✅ Check if user is already assigned to this project
     if (isUserAlreadyAssigned(selectedUser, selectedProject)) {
       const userName = getSelectedUserName();
       const projectName = getSelectedProjectName();
-      
       toast.error(
         `${userName} is already assigned to "${projectName}"`,
-        {
-          duration: 4000,
-          icon: '⚠️',
-        }
+        { duration: 4000, icon: '⚠️' }
       );
       return;
     }
-
     setAssigning(true);
     try {
       await api.post('/assignProject/assign', {
@@ -117,14 +188,13 @@ const AssignProjectPage = () => {
     }
   };
 
-  // ✅ New function to handle deassignment
   const handleDeassign = async (assignmentId, userName, projectName) => {
     setDeassigning(prev => ({ ...prev, [assignmentId]: true }));
     try {
       await api.delete(`/assignProject/deassign/${assignmentId}`);
       toast.success(`Successfully removed ${userName} from "${projectName}"`);
       setConfirmDeassign(null);
-      fetchData(); // Refresh the data
+      fetchData();
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to deassign project.';
       toast.error(errorMsg);
@@ -133,14 +203,9 @@ const AssignProjectPage = () => {
     }
   };
 
-  // ✅ Only include assignments where BOTH user and project still exist
-  const activeAssignments = assignments.filter(
-    (a) => a.user && a.user._id && a.project && a.project._id
-  );
-
-  // Search filter
+  const activeAssignments = getFilteredAssignments();
   const filteredAssignments = activeAssignments.filter((assignment) => {
-    const matchesSearch = 
+    const matchesSearch =
       assignment.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assignment.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assignment.project?.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -149,13 +214,14 @@ const AssignProjectPage = () => {
   });
 
   const getSelectedUserName = () => {
-    const user = users.find(u => u._id === selectedUser);
+    const user = filteredUsers.find(u => u._id === selectedUser);
     return user?.name || '';
   };
 
   const getSelectedProjectName = () => {
-    const project = projects.find(p => p._id === selectedProject);
-    return project?.name || '';
+    const availableProjects = filteredProjects();
+    const project = availableProjects.find(p => p.project._id === selectedProject);
+    return project?.project.name || '';
   };
 
   const clearSearch = () => {
@@ -163,11 +229,10 @@ const AssignProjectPage = () => {
     setShowMobileSearch(false);
   };
 
-  // ✅ Check if current selection is already assigned
-  const isCurrentSelectionDuplicate = selectedUser && selectedProject && 
+  const isCurrentSelectionDuplicate = selectedUser && selectedProject &&
     isUserAlreadyAssigned(selectedUser, selectedProject);
 
-  if (loading) {
+  if (loading || !currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
         <div className="text-center">
@@ -178,10 +243,31 @@ const AssignProjectPage = () => {
     );
   }
 
+  const availableProjects = filteredProjects();
+
   return (
     <div className="min-h-screen bg-gradient-to-br">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        
+
+        {/* ✅ Temporary Role Switcher - Remove in Production */}
+        {/* <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800 mb-2">Testing Mode - Current Role: <strong>{currentUser.role}</strong></p>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => handleRoleChange('admin')}
+              className={`px-3 py-1 text-xs rounded ${currentUser?.role === 'admin' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
+            >
+              Admin
+            </button>
+            <button 
+              onClick={() => handleRoleChange('projectManager')}
+              className={`px-3 py-1 text-xs rounded ${currentUser?.role === 'projectManager' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
+            >
+              Project Manager
+            </button>
+          </div>
+        </div> */}
+
         {/* Header stats */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -190,7 +276,12 @@ const AssignProjectPage = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Project Assignments</h1>
-              <p className="text-gray-600 mt-1">Assign projects to users and manage existing assignments</p>
+              <p className="text-gray-600 mt-1">
+                Assign projects to users and manage existing assignments
+                {currentUser.role !== 'admin' && currentUser.role !== 'Admin' && (
+                  <span className="text-sm text-purple-600 font-medium"> (Project Manager View)</span>
+                )}
+              </p>
             </div>
           </div>
 
@@ -198,8 +289,8 @@ const AssignProjectPage = () => {
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                <p className="text-sm text-gray-600">Available Users</p>
+                <p className="text-2xl font-bold text-gray-900">{filteredUsers.length}</p>
               </div>
               <div className="bg-blue-100 p-2 rounded-lg">
                 <Users className="w-5 h-5 text-blue-700" />
@@ -207,15 +298,16 @@ const AssignProjectPage = () => {
             </div>
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Projects</p>
-                <p className="text-2xl font-bold text-purple-600">{projects.length}</p>
+                <p className="text-sm text-gray-600">
+                  {currentUser.role === 'admin' || currentUser.role === 'Admin' ? 'Total Projects' : 'My Projects'}
+                </p>
+                <p className="text-2xl font-bold text-purple-600">{availableProjects.length}</p>
               </div>
               <div className="bg-purple-100 p-2 rounded-lg">
                 <FolderOpen className="w-5 h-5 text-purple-700" />
               </div>
             </div>
 
-            {/* ✅ Active Assignments count now checks both user and project */}
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active Assignments</p>
@@ -238,44 +330,76 @@ const AssignProjectPage = () => {
           <form onSubmit={handleAssign} className="p-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select User *</label>
-                <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
-                  value={selectedUser} 
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select User *
+                </label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
                 >
                   <option value="">Choose user</option>
-                  {users.map(user => (
-                    <option key={user._id} value={user._id}>
-                      {user.name || user.email}
-                    </option>
-                  ))}
+
+                  {users
+                    .filter(user => {
+                      // ✅ If current user is admin → show all except admins
+                      if (currentUser.role === "admin") {
+                        return user.role !== "admin";
+                      }
+                      // ✅ If current user is project_manager → show only users
+                      if (currentUser.role === "project_manager") {
+                        return user.role === "user";
+                      }
+                      return false;
+                    })
+                    .map(user => (
+                      <option key={user._id} value={user._id}>
+                        {user.name || user.email} {user.role && `(${user.role})`}
+                      </option>
+                    ))
+                  }
                 </select>
+
+                {filteredUsers.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">No users with role "user" found</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Project *</label>
-                <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
-                  value={selectedProject} 
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Project *
+                  {currentUser.role !== 'admin' && currentUser.role !== 'Admin' && (
+                    <span className="text-xs text-gray-500">(Your assigned projects only)</span>
+                  )}
+                </label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
                 >
                   <option value="">Choose project</option>
-                  {projects.map(project => (
-                    <option key={project._id} value={project._id}>
-                      {project.name}
+                  {availableProjects.map(data => (
+                    <option key={data.project._id} value={data.project._id}>
+                      {data.project.name}
                     </option>
                   ))}
                 </select>
+                {availableProjects.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    {currentUser.role === 'admin' || currentUser.role === 'Admin'
+                      ? 'No projects available'
+                      : 'No projects assigned to you'
+                    }
+                  </p>
+                )}
               </div>
             </div>
 
             {/* ✅ Show assignment preview or duplicate warning */}
             {selectedUser && selectedProject && (
-              <div className={`mt-4 p-3 border rounded-lg flex items-center gap-2 ${
-                isCurrentSelectionDuplicate 
+              <div className={`mt-4 p-3 border rounded-lg flex items-center gap-2 ${isCurrentSelectionDuplicate
                   ? 'border-red-200 bg-red-50 text-red-700'
                   : 'border-purple-200 bg-purple-50 text-purple-700'
-              }`}>
+                }`}>
                 {isCurrentSelectionDuplicate ? (
                   <>
                     <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -285,8 +409,8 @@ const AssignProjectPage = () => {
                   </>
                 ) : (
                   <>
-                    <strong>{getSelectedUserName()}</strong> 
-                    <ArrowRight className="w-4 h-4" /> 
+                    <strong>{getSelectedUserName()}</strong>
+                    <ArrowRight className="w-4 h-4" />
                     <strong>{getSelectedProjectName()}</strong>
                   </>
                 )}
@@ -306,7 +430,7 @@ const AssignProjectPage = () => {
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {userProjects.map((projectName, index) => (
-                            <span 
+                            <span
                               key={index}
                               className="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium"
                             >
@@ -328,14 +452,13 @@ const AssignProjectPage = () => {
               </div>
             )}
 
-            <button 
-              type="submit" 
-              disabled={assigning || !selectedUser || !selectedProject || isCurrentSelectionDuplicate} 
-              className={`mt-6 px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                isCurrentSelectionDuplicate
+            <button
+              type="submit"
+              disabled={assigning || !selectedUser || !selectedProject || isCurrentSelectionDuplicate}
+              className={`mt-6 px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isCurrentSelectionDuplicate
                   ? 'bg-gray-400 text-white'
                   : 'bg-purple-600 text-white hover:bg-purple-700'
-              }`}
+                }`}
             >
               {assigning && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
               {assigning ? "Assigning..." : isCurrentSelectionDuplicate ? "Already Assigned" : "Assign Project"}
@@ -353,16 +476,16 @@ const AssignProjectPage = () => {
                   ({filteredAssignments.length})
                 </span>
               </h2>
-              
+
               {/* Desktop Search */}
               <div className="hidden md:block relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input 
-                  type="text" 
-                  placeholder="Search users, emails, projects..." 
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 w-80" 
-                  value={searchTerm} 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
+                <input
+                  type="text"
+                  placeholder="Search users, emails, projects..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 w-80"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 {searchTerm && (
                   <button
@@ -398,11 +521,11 @@ const AssignProjectPage = () => {
             {showMobileSearch && (
               <div className="md:hidden mt-4 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input 
-                  type="text" 
-                  placeholder="Search users, emails, projects..." 
-                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
-                  value={searchTerm} 
+                <input
+                  type="text"
+                  placeholder="Search users, emails, projects..."
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   autoFocus
                 />
@@ -437,9 +560,11 @@ const AssignProjectPage = () => {
                   {searchTerm ? 'No matching assignments' : 'No assignments found'}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm 
+                  {searchTerm
                     ? `No assignments match your search for "${searchTerm}"`
-                    : 'Start by assigning projects to users above'
+                    : currentUser.role === 'admin' || currentUser.role === 'Admin'
+                      ? 'Start by assigning projects to users above'
+                      : 'No assignments found for your projects'
                   }
                 </p>
                 {searchTerm && (
@@ -481,13 +606,13 @@ const AssignProjectPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end gap-2">
-                              <button 
-                                onClick={() => setModalUser(assignment.user)} 
+                              <button
+                                onClick={() => setModalUser(assignment.user)}
                                 className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
                               >
                                 <Eye className="w-4 h-4" /> View
                               </button>
-                              <button 
+                              <button
                                 onClick={() => setConfirmDeassign(assignment)}
                                 disabled={deassigning[assignment._id]}
                                 className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -518,20 +643,20 @@ const AssignProjectPage = () => {
                         </div>
                         <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">#{idx + 1}</span>
                       </div>
-                      
+
                       <div className="mb-3">
                         <p className="text-sm text-gray-600 mb-1">Assigned Project:</p>
                         <p className="font-medium text-gray-900">{assignment.project?.name}</p>
                       </div>
-                      
+
                       <div className="flex justify-between items-center gap-2">
-                        <button 
-                          onClick={() => setModalUser(assignment.user)} 
+                        <button
+                          onClick={() => setModalUser(assignment.user)}
                           className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
                         >
                           <Eye className="w-4 h-4" /> View Details
                         </button>
-                        <button 
+                        <button
                           onClick={() => setConfirmDeassign(assignment)}
                           disabled={deassigning[assignment._id]}
                           className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -568,12 +693,12 @@ const AssignProjectPage = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900">Confirm Deassignment</h3>
                 </div>
-                
+
                 <p className="text-gray-600 mb-6">
-                  Are you sure you want to remove <strong>{confirmDeassign.user?.name}</strong> from 
+                  Are you sure you want to remove <strong>{confirmDeassign.user?.name}</strong> from
                   project "<strong>{confirmDeassign.project?.name}</strong>"?
                 </p>
-                
+
                 <div className="flex gap-3 justify-end">
                   <button
                     onClick={() => setConfirmDeassign(null)}
@@ -583,8 +708,8 @@ const AssignProjectPage = () => {
                   </button>
                   <button
                     onClick={() => handleDeassign(
-                      confirmDeassign._id, 
-                      confirmDeassign.user?.name, 
+                      confirmDeassign._id,
+                      confirmDeassign.user?.name,
                       confirmDeassign.project?.name
                     )}
                     disabled={deassigning[confirmDeassign._id]}
@@ -606,5 +731,6 @@ const AssignProjectPage = () => {
     </div>
   );
 };
+
 
 export default AssignProjectPage;
