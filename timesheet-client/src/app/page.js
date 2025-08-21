@@ -190,9 +190,10 @@ export default function DashboardPage() {
 
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {projects.map((data) => (
+                  // console.log("Project data:", data),
                   <Link
                     key={data._id}
-                    href={`/projects/${data.project._id}`}
+                    href={`/projects/${data.project?._id}`}
                     className="group relative bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-purple-300 transition-all duration-200 transform hover:-translate-y-1"
                   >
                     {/* Top accent */}
