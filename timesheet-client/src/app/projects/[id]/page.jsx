@@ -669,24 +669,29 @@ export default function ProjectDetailsPage() {
                                   );
                                 })}
                                 <td className="px-6 py-4 text-right text-sm font-medium">
-                                  {(user?.role === "admin" || entry.user === user?.id || entry.user?._id === user?.id) && (
-                                    <div className="flex items-center gap-2 justify-end">
-                                      <button
-                                        onClick={() => openEditModal(entry)}
-                                        className="text-purple-600 hover:text-purple-800 transition-colors"
-                                        title="Edit entry"
-                                      >
-                                        <Pencil className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleTimesheetDelete(entry._id)}
-                                        className="text-red-600 hover:text-red-800 transition-colors"
-                                        title="Delete entry"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  )}
+                                  {(
+                                    user?.role === "admin" ||
+                                    user?.role === "project_manager" ||
+                                    entry.user === user?.id ||
+                                    entry.user?._id === user?.id
+                                  ) && (
+                                      <div className="flex items-center gap-2 justify-end">
+                                        <button
+                                          onClick={() => openEditModal(entry)}
+                                          className="text-purple-600 hover:text-purple-800 transition-colors"
+                                          title="Edit entry"
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleTimesheetDelete(entry._id)}
+                                          className="text-red-600 hover:text-red-800 transition-colors"
+                                          title="Delete entry"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    )}
                                 </td>
                               </tr>
                             ))}
