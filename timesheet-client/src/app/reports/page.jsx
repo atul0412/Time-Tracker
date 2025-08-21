@@ -29,6 +29,47 @@ export default function ReportPage() {
     const [customDateRange, setCustomDateRange] = useState({ startDate: '', endDate: '' })
     const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
 
+    // ✅ Helper function to format user display name with role
+    const formatUserDisplayName = (user) => {
+        if (!user) return 'Unknown User';
+        const name = user.name || user.username || user.email || 'Unknown User';
+        const role = user.role;
+        
+        // Format role for display
+        const roleDisplay = role ? ` (${formatRole(role)})` : '';
+        return `${name}${roleDisplay}`;
+    };
+
+    // ✅ Helper function to format role names
+    const formatRole = (role) => {
+        if (!role) return '';
+        
+        // Convert role names to display format
+        const roleMap = {
+            'admin': 'Admin',
+            'project_manager': 'Project Manager',
+            'user': 'User',
+            'developer': 'Developer',
+            'designer': 'Designer',
+            'tester': 'Tester'
+        };
+        
+        return roleMap[role] || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    // ✅ Helper function to get role badge color
+    const getRoleBadgeColor = (role) => {
+        const colorMap = {
+            'admin': 'bg-red-100 text-red-800 border-red-200',
+            'project_manager': 'bg-blue-100 text-blue-800 border-blue-200',
+            'user': 'bg-green-100 text-green-800 border-green-200',
+            'developer': 'bg-purple-100 text-purple-800 border-purple-200',
+            'designer': 'bg-pink-100 text-pink-800 border-pink-200',
+            'tester': 'bg-orange-100 text-orange-800 border-orange-200'
+        };
+        return colorMap[role] || 'bg-gray-100 text-gray-800 border-gray-200';
+    };
+
     // Fetch all users on mount
     useEffect(() => {
         const fetchUsers = async () => {
@@ -90,8 +131,6 @@ export default function ReportPage() {
         fetchAllProjects();
     }, [viewMode]);
 
-
-    // Fetch assigned users when a project is selected in project view
     // Fetch assigned users when a project is selected in project view
     useEffect(() => {
         if (viewMode !== 'project' || !selectedProject?._id) {
@@ -133,7 +172,6 @@ export default function ReportPage() {
 
         fetchAssignedUsers()
     }, [viewMode, selectedProject?._id])
-
 
     // Fetch timesheets when relevant dependencies change
     useEffect(() => {
@@ -416,11 +454,11 @@ export default function ReportPage() {
                                     .filter((user) => user.role !== "admin") // 🚫 Exclude admins
                                     .map((user) => (
                                         <option key={user._id} value={user._id}>
-                                            {user.name}
+                                            {/* ✅ Show name with role */}
+                                            {formatUserDisplayName(user)}
                                         </option>
                                     ))}
                             </select>
-
                         )}
                     </div>
                 )}
@@ -483,8 +521,16 @@ export default function ReportPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
-                            <div className="ml-3">
-                                <h3 className="text-lg font-medium text-gray-800">{selectedUser.name}</h3>
+                            <div className="ml-3 flex-1">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-lg font-medium text-gray-800">{selectedUser.name}</h3>
+                                    {/* ✅ Show role badge */}
+                                    {selectedUser.role && (
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(selectedUser.role)}`}>
+                                            {formatRole(selectedUser.role)}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-gray-700">{selectedUser.email || 'No email available'}</p>
                             </div>
                         </div>
@@ -507,72 +553,78 @@ export default function ReportPage() {
                     </div>
                 )}
 
-                {/* Assigned Users List (Project View Only) */}
-                {viewMode === 'project' && selectedProject && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                            <Users className="w-5 h-5 mr-2 text-purple-600" />
-                            Assigned Users
-                            {assignedUsers.length > 0 && (
-                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                    {assignedUsers.length} users
-                                </span>
-                            )}
-                        </h2>
+                {/* ✅ Updated Assigned Users List (Project View Only) - Now shows roles */}
+             {viewMode === 'project' && selectedProject && (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2 text-purple-600" />
+            Assigned Users
+            {assignedUsers.length > 0 && (
+                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    {assignedUsers.length} users
+                </span>
+            )}
+        </h2>
 
-                        {assignedUsersLoading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                                <span className="ml-2 text-gray-600">Loading assigned users...</span>
-                            </div>
-                        ) : assignedUsersError ? (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                                <div className="flex items-center">
-                                    <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <div className="ml-3">
-                                        <p className="text-red-600 text-sm">{assignedUsersError}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : assignedUsers.length === 0 ? (
-                            <div className="text-center py-8">
-                                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No users assigned</h3>
-                                <p className="text-gray-500">This project doesn't have any assigned users yet.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {assignedUsers.map((assignment, index) => {
-                                    // Fix: Access the nested user object from the assignment
-                                    const user = assignment.user || assignment;
-                                    const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
-                                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-
-                                    return (
-                                        <div key={user._id || assignment._id || index} className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
-                                            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
-                                                {initials}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-                                                {user.email && (
-                                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                                                )}
-                                                {user.role && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
-                                                        {user.role}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+        {assignedUsersLoading ? (
+            <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                <span className="ml-2 text-gray-600">Loading assigned users...</span>
+            </div>
+        ) : assignedUsersError ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                    <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="ml-3">
+                        <p className="text-red-600 text-sm">{assignedUsersError}</p>
                     </div>
-                )}
+                </div>
+            </div>
+        ) : assignedUsers.length === 0 ? (
+            <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No users assigned</h3>
+                <p className="text-gray-500">This project doesn't have any assigned users yet.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {assignedUsers.map((assignment, index) => {
+                    // Fix: Access the nested user object from the assignment
+                    const user = assignment.user || assignment;
+                    const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
+                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+                    return (
+                        <div key={user._id || assignment._id || index} className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
+                            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
+                                {initials}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                {/* ✅ Updated: Name with role inline */}
+                                <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
+                                    {/* ✅ Role badge next to name */}
+                                    {user.role && (
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
+                                            {formatRole(user.role)}
+                                        </span>
+                                    )}
+                                </div>
+                                {/* ✅ Email on separate line */}
+                                {user.email && (
+                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        )}
+    </div>
+)}
+
 
                 {/* Assigned Projects Grid (user view only) */}
                 {viewMode === 'user' && selectedUser && assignedProjects.length > 0 && (
@@ -626,7 +678,7 @@ export default function ReportPage() {
                                     <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
-                                    Timesheets for "{viewMode === 'user' && selectedUser ? selectedUser.name + ' - ' : ''}{selectedProject ? selectedProject.name : ''}"
+                                    Timesheets for "{viewMode === 'user' && selectedUser ? `${formatUserDisplayName(selectedUser)} - ` : ''}{selectedProject ? selectedProject.name : ''}"
                                 </h2>
                                 {filteredTimesheets.length > 0 && (
                                     <div className="flex flex-wrap gap-4 text-right">
