@@ -13,7 +13,7 @@ import {
   Calendar,
   Clock,
   User,
-  Users, // Add this import
+  Users,
   FileText,
   Settings,
   ArrowLeft,
@@ -24,6 +24,13 @@ import {
 import { exportTimesheetToExcel } from '../../../lib/exportToExcel';
 import { formatDateToReadable } from '../../../lib/dateFormate';
 import { useAuth } from '../../../context/AuthContext';
+
+// Components
+import ConfirmHoursModal from '../../../components/models/confirmationHours';
+import DeleteConfirmationModal from '../../../components/models/confirmationDelete';
+import EditProjectModal from '../../../components/models/EditProjectModal';
+import EditTimesheetModal from '../../../components/models/EditTimesheetModal';
+import AddTimesheetModal from '../../../components/models/AddTimesheetModal'; // ✅ New import
 
 export default function ProjectDetailsPage() {
   const { user } = useAuth();
@@ -58,7 +65,7 @@ export default function ProjectDetailsPage() {
   });
   const [editProjectLoading, setEditProjectLoading] = useState(false);
 
-  // Delete confirmation states
+  // ✅ Updated delete confirmation states for the separate modal
   const [deleteConfirmation, setDeleteConfirmation] = useState({
     show: false,
     type: '',
@@ -67,6 +74,10 @@ export default function ProjectDetailsPage() {
     message: '',
     loading: false
   });
+
+  // ✅ Hours confirmation modal states
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmHoursData, setConfirmHoursData] = useState(null);
 
   const [userRole, setUserRole] = useState('');
   const [errors, setErrors] = useState({});
@@ -91,7 +102,6 @@ export default function ProjectDetailsPage() {
         const projectData = projectRes.data.data || projectRes.data;
         setProject(projectData);
 
-        // Initialize project form data when project is loaded
         if (projectData) {
           initializeProjectFormData(projectData);
         }
@@ -100,8 +110,6 @@ export default function ProjectDetailsPage() {
           (a, b) => new Date(a.data?.date) - new Date(b.data?.date)
         );
         setTimesheets(sortedTimesheets);
-        console.log('Project data:', projectData);
-        console.log('Timesheets:', sortedTimesheets);
       } catch (err) {
         setError(err?.response?.data?.message || 'Failed to load project or timesheets');
       } finally {
@@ -137,39 +145,38 @@ export default function ProjectDetailsPage() {
     }
   }, [addingEntry, project]);
 
-  // Fetch users when project loads
- useEffect(() => {
-  if (id && user && (user.role === "admin" || user.role === "project_manager")) {
-  fetchUsers(id);
-}
-}, [id, user?.role]);
+  useEffect(() => {
+    if (id && user && (user.role === "admin" || user.role === "project_manager")) {
+      fetchUsers(id);
+    }
+  }, [id, user?.role]);
 
-
-  // Add this function to fetch users
   const fetchUsers = async (projectId) => {
     try {
       setUsersLoading(true);
       setUsersError(false);
       if (!projectId) {
-        console.error('Project ID is required');
         setUsersError(true);
         toast.error('Project ID is required to fetch users');
         return;
       }
-      // Try assigned-users endpoint, fallback to all users
+
       let response;
       try {
-       response = await api.get('/users/getAlluser');
+        response = await api.get('/users/getAlluser');
       } catch {
         console.error('Failed to fetch assigned users, falling back to all users');
       }
-      const userOptions = response.data.map(user => ({
+
+      const rawUsers = Array.isArray(response.data) ? response.data : response.data?.data || [];
+      const userOptions = rawUsers.map(user => ({
         value: user._id || user.id,
         label: user.name || user.email || 'Unknown User',
         email: user.email || '',
         role: user.role || 'User'
       }));
       setUsers(userOptions);
+
     } catch (error) {
       setUsersError(true);
       if (error.response?.status === 404) {
@@ -184,9 +191,13 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  // Initialize project form data when project is loaded
   const initializeProjectFormData = (project) => {
-    const existingManagers = project.projectManagersDetails || project.projectManagers || [];
+    const existingManagers = Array.isArray(project.projectManagersDetails)
+      ? project.projectManagersDetails
+      : Array.isArray(project.projectManagers)
+        ? project.projectManagers
+        : [];
+
     const formattedManagers = existingManagers.map(manager => ({
       value: manager._id || manager.id,
       label: manager.name || manager.email || 'Unknown User',
@@ -196,12 +207,12 @@ export default function ProjectDetailsPage() {
     setProjectFormData({
       name: project.name || '',
       description: project.description || '',
-      fields: project.fields || [],
+      fields: Array.isArray(project.fields) ? project.fields : [],
       projectManagers: formattedManagers
     });
   };
 
-  // Show delete confirmation
+  // ✅ Updated to use the separate modal
   const showDeleteConfirmation = (type, itemId, title, message) => {
     setDeleteConfirmation({
       show: true,
@@ -213,7 +224,6 @@ export default function ProjectDetailsPage() {
     });
   };
 
-  // Hide delete confirmation
   const hideDeleteConfirmation = () => {
     setDeleteConfirmation({
       show: false,
@@ -225,7 +235,7 @@ export default function ProjectDetailsPage() {
     });
   };
 
-  // Handle confirmed deletion
+  // ✅ Updated to work with separate modal
   const handleConfirmedDelete = async () => {
     const { type, id: itemId } = deleteConfirmation;
 
@@ -267,6 +277,7 @@ export default function ProjectDetailsPage() {
     );
   };
 
+  // ✅ Updated edit modal handlers
   const openEditModal = (entry) => {
     setEditingEntry(entry);
     setFormData(entry.data || {});
@@ -306,28 +317,99 @@ export default function ProjectDetailsPage() {
   const closeAddModal = () => {
     setAddingEntry(false);
     setAddFormData({});
+    // ✅ Also reset confirmation modal states
+    setShowConfirmModal(false);
+    setConfirmHoursData(null);
   };
 
+  // ✅ Updated handleAddSubmit with hours validation
   const handleAddSubmit = async () => {
     try {
+      // Check for effort/working hours exceeding 8 hours
+      const hoursFields = project.fields?.filter(field =>
+        field.fieldName.toLowerCase().includes("effort") ||
+        field.fieldName.toLowerCase().includes("hours") ||
+        field.fieldName.toLowerCase().includes("hour")
+      );
+
+      let exceedsEightHours = false;
+      let hoursData = null;
+
+      // Check each hours field
+      hoursFields?.forEach(field => {
+        const hours = Number(addFormData[field.fieldName]) || 0;
+        if (hours > 8) {
+          exceedsEightHours = true;
+          hoursData = {
+            fieldName: field.fieldName,
+            hours: hours,
+            totalHours: hours
+          };
+        }
+      });
+
+      // Show confirmation modal if hours exceed 8
+      if (exceedsEightHours) {
+        setConfirmHoursData(hoursData);
+        setShowConfirmModal(true);
+        return; // Wait for user confirmation
+      }
+
+      // Proceed with normal submission
+      await submitTimesheet();
+
+    } catch (error) {
+      console.error("Error in handleAddSubmit:", error);
+      toast.error("An error occurred. Please try again.");
+    }
+  };
+
+  // ✅ Separate function to handle actual submission
+  const submitTimesheet = async () => {
+    try {
+      // Validate required fields
+      const hasDate = project.fields?.some(field =>
+        field.fieldType === "Date" && addFormData[field.fieldName]
+      );
+
+      if (!hasDate) {
+        toast.error("Please select a date");
+        return;
+      }
+
       setAddLoading(true);
+
       const res = await api.post(`/timesheets/create-timesheet`, {
         project: id,
         data: addFormData,
       });
+
       toast.success('Timesheet added');
       setTimesheets((prev) => [...prev, res.data]);
       closeAddModal();
+
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to add timesheet');
     } finally {
       setAddLoading(false);
+      setShowConfirmModal(false);
+      setConfirmHoursData(null);
     }
+  };
+
+  // ✅ Handlers for confirmation modal
+  const handleConfirmHours = async () => {
+    await submitTimesheet();
+  };
+
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false);
+    setConfirmHoursData(null);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br  flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">Loading project details...</p>
@@ -368,13 +450,9 @@ export default function ProjectDetailsPage() {
   }
 
   const grouped = groupByDate(timesheets);
-
   const filteredFields = project.fields?.filter(
     (field) => field.fieldName !== "Developer Name"
   );
-
-  // console.log('Current project:', project);
-  // console.log('Filtered fields:', filteredFields);
 
   return (
     <div className="min-h-screen bg-gradient-to-br">
@@ -468,11 +546,10 @@ export default function ProjectDetailsPage() {
                   Add Entry
                 </button>
 
-                {(userRole === 'admin' || userRole === 'project_manager') &&  (
+                {(userRole === 'admin' || userRole === 'project_manager') && (
                   <>
                     <button
                       onClick={() => {
-                        // Initialize project form data when opening edit modal
                         initializeProjectFormData(project);
                         setEditingProject(true);
                       }}
@@ -505,7 +582,6 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
 
-        {/* Rest of your component remains exactly the same */}
         {/* Timesheets Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
@@ -682,698 +758,93 @@ export default function ProjectDetailsPage() {
         </div>
       </div>
 
-      {/* All your existing modals remain the same */}
-      {/* Delete Confirmation Modal */}
-      {deleteConfirmation.show && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="bg-red-100 p-3 rounded-full">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{deleteConfirmation.title}</h3>
-                </div>
-              </div>
+      {/* ✅ Updated Delete Confirmation Modal - Now using separate component */}
+      <DeleteConfirmationModal
+        isOpen={deleteConfirmation.show}
+        onConfirm={handleConfirmedDelete}
+        onCancel={hideDeleteConfirmation}
+        title={deleteConfirmation.title}
+        message={deleteConfirmation.message}
+        isLoading={deleteConfirmation.loading}
+      />
 
-              <p className="text-gray-600 mb-8 leading-relaxed">
-                {deleteConfirmation.message}
-              </p>
+      {/* ✅ Edit Timesheet Modal - Updated with projectFields prop */}
+      <EditTimesheetModal
+        isOpen={!!editingEntry}
+        onClose={closeEditModal}
+        onSave={handleEditSubmit}
+        formData={formData}
+        setFormData={setFormData}
+        isLoading={editLoading}
+        projectFields={project?.fields}
+      />
 
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={hideDeleteConfirmation}
-                  disabled={deleteConfirmation.loading}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmedDelete}
-                  disabled={deleteConfirmation.loading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {deleteConfirmation.loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ✅ Add Timesheet Modal - Now using separate component */}
+      <AddTimesheetModal
+        isOpen={addingEntry}
+        onClose={closeAddModal}
+        onSave={handleAddSubmit}
+        formData={addFormData}
+        setFormData={setAddFormData}
+        isLoading={addLoading}
+        user={user}
+        filteredFields={filteredFields}
+      />
 
-      {/* Edit Timesheet Modal */}
-      {editingEntry && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">Edit Timesheet Entry</h3>
-                <button
-                  onClick={closeEditModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {/* Date field with formatted display */}
-              {formData.date && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Entry Date
-                    <span className="text-xs text-purple-600 font-normal ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
-                      <span className="flex items-center gap-2">
-                        {formatDateToReadable(formData.date)}
-                      </span>
-                      <span className="text-purple-600 text-sm flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                      </span>
-                    </div>
-
-                    {/* Invisible date input overlay for editing */}
-                    <input
-                      type="date"
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      value={formData.date.slice(0, 10)}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          date: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Other fields */}
-              {Object.entries(formData).map(([key, value]) => {
-                if (key === 'date') return null;
-
-                const isTaskField = key.toLowerCase() === 'task';
-                const isDateField = key.toLowerCase().includes('date');
-                const inputType =
-                  typeof value === 'number' || key.toLowerCase().includes('hours')
-                    ? 'number'
-                    : isDateField
-                      ? 'date'
-                      : 'text';
-
-                return (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-                      {key.replace(/_/g, ' ')}
-                      {isDateField && (
-                        <span className="text-xs text-purple-600 font-normal ml-1">*</span>
-                      )}
-                    </label>
-
-                    {isTaskField ? (
-                      <textarea
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-                        value={value}
-                        placeholder="Describe what you worked on..."
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : isDateField ? (
-                      <div className="relative">
-                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
-                          <span className="flex items-center gap-2">
-                            {value ? formatDateToReadable(value) : 'Select date'}
-                          </span>
-                          <span className="text-purple-600 text-sm flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                          </span>
-                        </div>
-
-                        <input
-                          type="date"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          value={value || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              [key]: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    ) : (
-                      <input
-                        type={inputType}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        value={value || ''}
-                        placeholder={
-                          inputType === 'number'
-                            ? "Enter number..."
-                            : `Enter ${key.toLowerCase().replace(/_/g, ' ')}...`
-                        }
-                        onChange={(e) => {
-                          const newValue = inputType === 'number'
-                            ? (e.target.value === "" ? "" : Number(e.target.value))
-                            : e.target.value;
-                          setFormData((prev) => ({
-                            ...prev,
-                            [key]: newValue,
-                          }));
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-end items-center">
-                <div className="flex gap-3">
-                  <button
-                    onClick={closeEditModal}
-                    disabled={editLoading}
-                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleEditSubmit}
-                    disabled={editLoading}
-                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {editLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Update Entry
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Timesheet Modal */}
-      {addingEntry && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">Add Timesheet Entry</h3>
-                <button
-                  onClick={closeAddModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {/* Developer Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Developer Name</label>
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
-                  <User className="w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={user?.name || ""}
-                    readOnly
-                    className="flex-1 bg-transparent text-gray-700 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Dynamic fields */}
-              {filteredFields?.map((field) => {
-                const isDate = field.fieldType === "Date";
-                const fieldValue = addFormData[field.fieldName];
-                const isTaskField = field.fieldName.toLowerCase().includes("task");
-
-                const inputValue = (() => {
-                  if (fieldValue !== undefined) {
-                    if (isDate && fieldValue) {
-                      return formatDateToReadable(fieldValue);
-                    }
-                    return fieldValue;
-                  }
-                  return isDate ? formatDateToReadable(new Date()) : "";
-                })();
-
-                return (
-                  <div key={field.fieldName}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-                      {field.fieldName.replace(/_/g, " ")}
-                      {field.fieldType === "Date" && (
-                        <span className="text-xs text-purple-600 font-normal ml-1">*</span>
-                      )}
-                    </label>
-
-                    {field.fieldName === "Frontend/Backend" ? (
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        value={inputValue}
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">Select type</option>
-                        <option value="Frontend">Frontend</option>
-                        <option value="Backend">Backend</option>
-                      </select>
-                    ) : isTaskField ? (
-                      <textarea
-                        rows={4}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
-                        value={inputValue}
-                        placeholder="Describe what you worked on..."
-                        onChange={(e) =>
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : isDate ? (
-                      <div className="relative">
-                        <div className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-black font-medium flex items-center justify-between cursor-pointer hover:bg-purple-100 transition-colors">
-                          <span className="flex items-center gap-2">
-                            {inputValue}
-                          </span>
-                          <span className="text-gray-600 text-sm flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                          </span>
-                        </div>
-
-                        <input
-                          type="date"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          value={fieldValue ? new Date(fieldValue).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
-                          onChange={(e) => {
-                            const selectedDate = e.target.value;
-                            setAddFormData((prev) => ({
-                              ...prev,
-                              [field.fieldName]: selectedDate,
-                            }));
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <input
-                        type={
-                          field.fieldType === "Number"
-                            ? "number"
-                            : "text"
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        value={inputValue}
-                        placeholder={
-                          field.fieldType === "Number"
-                            ? "Enter number..."
-                            : `Enter ${field.fieldName.toLowerCase()}...`
-                        }
-                        onChange={(e) => {
-                          const value = field.fieldType === "Number"
-                            ? (e.target.value === "" ? "" : Number(e.target.value))
-                            : e.target.value;
-                          setAddFormData((prev) => ({
-                            ...prev,
-                            [field.fieldName]: value,
-                          }));
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-end items-center">
-                <div className="flex gap-3">
-                  <button
-                    onClick={closeAddModal}
-                    disabled={addLoading}
-                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddSubmit}
-                    disabled={addLoading}
-                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {addLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        Adding...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        Add Entry
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ✅ Hours Confirmation Modal */}
+      <ConfirmHoursModal
+        isOpen={showConfirmModal}
+        onConfirm={handleConfirmHours}
+        onCancel={handleCancelConfirm}
+        hoursData={confirmHoursData}
+        isLoading={addLoading}
+      />
 
       {/* Edit Project Modal */}
-      {editingProject && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-gray-900">Edit Project Settings</h3>
-              <button
-                onClick={() => setEditingProject(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <EditProjectModal
+        open={editingProject}
+        onClose={() => setEditingProject(false)}
+        onSave={async () => {
+          try {
+            setEditProjectLoading(true);
+            const submitData = {
+              ...projectFormData,
+              projectManagers: projectFormData.projectManagers?.map(pm => pm.value) || [],
+            };
+            await api.put(`/projects/${id}`, submitData);
+            toast.success("Project updated successfully");
+            const freshProjectRes = await api.get(`/projects/${id}`);
+            const freshProjectData = freshProjectRes.data.data || freshProjectRes.data;
+            setProject(freshProjectData);
+            setProjectFormData({
+              name: freshProjectData.name || "",
+              description: freshProjectData.description || "",
+              fields: Array.isArray(freshProjectData.fields) ? freshProjectData.fields : [],
+              projectManagers: (Array.isArray(freshProjectData.projectManagersDetails)
+                ? freshProjectData.projectManagersDetails
+                : []).map(manager => ({
+                  value: manager._id || manager.id,
+                  label: manager.name || manager.email || "Unknown User",
+                  email: manager.email || ""
+                }))
+            });
+            setEditingProject(false);
+          } catch (err) {
+            toast.error(
+              err?.response?.data?.message || "Failed to update project"
+            );
+          } finally {
+            setEditProjectLoading(false);
+          }
+        }}
+        formData={projectFormData}
+        setFormData={setProjectFormData}
+        users={users}
+        usersLoading={usersLoading}
+        usersError={usersError}
+        editLoading={editProjectLoading}
+      />
 
-            <div className="p-6 space-y-6">
-              {/* Project Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={projectFormData.name}
-                  onChange={(e) =>
-                    setProjectFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-                  value={projectFormData.description}
-                  onChange={(e) =>
-                    setProjectFormData((prev) => ({ ...prev, description: e.target.value }))
-                  }
-                />
-              </div>
-
-              {/* Project Managers Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Managers *
-                </label>
-                <Select
-                  isMulti
-                  options={users}
-                  value={projectFormData.projectManagers || []}
-                  onChange={(selectedOptions) => {
-                    setProjectFormData((prev) => ({
-                      ...prev,
-                      projectManagers: selectedOptions || []
-                    }));
-                  }}
-                  placeholder="Select project managers..."
-                  isLoading={usersLoading}
-                  isDisabled={usersLoading}
-                  className="react-select-container"
-                  classNamePrefix="react-select"
-                  isSearchable
-                  isClearable
-                  closeMenuOnSelect={true}
-                  hideSelectedOptions={false}
-                  blurInputOnSelect={false}
-                  noOptionsMessage={() =>
-                    <div className="text-gray-500 text-sm py-2 px-3">
-                      {usersError ? 'Error loading users' : 'No users found'}
-                    </div>
-                  }
-                  loadingMessage={() =>
-                    <div className="text-gray-500 text-sm py-2 px-3 flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                      Loading users...
-                    </div>
-                  }
-                  formatOptionLabel={(option) => {
-                    if (!option) return null;
-                    const displayName = option.label || 'Unknown User';
-                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-                    return (
-                      <div className="flex items-center gap-3 py-1">
-                        <div className="w-7 h-7 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                          {initials}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-gray-900 text-sm">{displayName}</span>
-                          <span className="text-xs text-gray-500">{option.email || 'No email'}</span>
-                        </div>
-                      </div>
-                    );
-                  }}
-                  getOptionLabel={option => option.label}
-                  getOptionValue={option => option.value}
-                />
-
-                {/* Selected Project Managers Preview */}
-                {projectFormData.projectManagers && projectFormData.projectManagers.length > 0 && (
-                  <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                    <p className="text-sm text-purple-700 font-medium mb-2">
-                      Selected Project Managers ({projectFormData.projectManagers.length})
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {projectFormData.projectManagers.map((manager, index) => {
-                        const displayName = manager.label || 'Unknown User';
-                        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-                        return (
-                          <div key={manager.value || index} className="flex items-center gap-2 bg-white px-2 py-1 rounded-full border border-purple-200 text-sm">
-                            <div className="w-4 h-4 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                              {initials}
-                            </div>
-                            <span className="text-gray-700">{displayName}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Custom Fields Only */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-4">Custom Fields</h4>
-
-                {/* Filter out ALL default fields */}
-                {projectFormData.fields
-                  ?.filter((field) => {
-                    const defaultFields = [
-                      "task",
-                      "date",
-                      "Effort Hours",
-                      "Frontend/Backend",
-                      "Developer Name",
-                      "Task",
-                    ];
-                    return !defaultFields.includes(field.fieldName);
-                  })
-                  .map((field, index) => (
-                    <div key={index} className="p-4 bg-gray-50 rounded-lg mb-4 border border-gray-200">
-                      <div className="flex justify-between items-center mb-3">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Custom Field {index + 1}
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = projectFormData.fields.filter((_, i) => {
-                              const customFields = projectFormData.fields.filter(f => {
-                                const defaultFields = [
-                                  "task", "date", "workingHours", "Frontend/Backend",
-                                  "Developer Name", "Task", "Date", "Working Hours"
-                                ];
-                                return !defaultFields.includes(f.fieldName);
-                              });
-                              return i !== customFields.findIndex(cf => cf.fieldName === field.fieldName);
-                            });
-                            setProjectFormData((prev) => ({
-                              ...prev,
-                              fields: updated,
-                            }));
-                          }}
-                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
-                          title="Delete field"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <input
-                          type="text"
-                          placeholder="Field Name"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          value={field.fieldName}
-                          onChange={(e) => {
-                            const updated = [...projectFormData.fields];
-                            const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
-                            if (actualIndex !== -1) {
-                              updated[actualIndex].fieldName = e.target.value;
-                              setProjectFormData((prev) => ({
-                                ...prev,
-                                fields: updated,
-                              }));
-                            }
-                          }}
-                        />
-                        <select
-                          className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          value={field.fieldType}
-                          onChange={(e) => {
-                            const updated = [...projectFormData.fields];
-                            const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
-                            if (actualIndex !== -1) {
-                              updated[actualIndex].fieldType = e.target.value;
-                              setProjectFormData((prev) => ({
-                                ...prev,
-                                fields: updated,
-                              }));
-                            }
-                          }}
-                        >
-                          <option value="String">String</option>
-                          <option value="Number">Number</option>
-                          <option value="Date">Date</option>
-                          <option value="Boolean">Boolean</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-
-                {/* Show message if no custom fields */}
-                {projectFormData.fields?.filter((field) => {
-                  const defaultFields = [
-                    "task", "date", "workingHours", "Frontend/Backend",
-                    "Developer Name", "Task", "Date", "Working Hours"
-                  ];
-                  return !defaultFields.includes(field.fieldName);
-                }).length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                      <p>No custom fields added yet</p>
-                      <p className="text-sm">Click "Add Custom Field" to create one</p>
-                    </div>
-                  )}
-              </div>
-
-              {/* Add New Field Button */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProjectFormData((prev) => ({
-                      ...prev,
-                      fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
-                    }));
-                  }}
-                  className="px-4 py-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Custom Field
-                </button>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setEditingProject(false)}
-                  disabled={editProjectLoading}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      setEditProjectLoading(true);
-
-                      // Transform project managers to just IDs for backend
-                      const submitData = {
-                        ...projectFormData,
-                        projectManagers: projectFormData.projectManagers?.map(pm => pm.value) || []
-                      };
-
-                      await api.put(`/projects/${id}`, submitData);
-                      toast.success("Project updated successfully");
-
-                      // Update the project state with the new data
-                      const freshProjectRes = await api.get(`/projects/${id}`);
-                      const freshProjectData = freshProjectRes.data.data || freshProjectRes.data;
-                      setProject(freshProjectData);
-                      initializeProjectFormData(freshProjectData);
-
-                      setEditingProject(false);
-                    } catch (err) {
-                      toast.error(
-                        err?.response?.data?.message || "Failed to update project"
-                      );
-                    } finally {
-                      setEditProjectLoading(false);
-                    }
-                  }}
-                  disabled={editProjectLoading}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {editProjectLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Save Changes
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

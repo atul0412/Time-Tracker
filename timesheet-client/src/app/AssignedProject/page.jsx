@@ -13,12 +13,14 @@ import {
   X,
   AlertTriangle,
   UserMinus,
-  Trash2
+  Trash2,
+  Shield,
+  Briefcase,
+  User
 } from 'lucide-react';
 import api from '../../lib/axios';
 import toast from 'react-hot-toast';
 import UserAssignmentsModal from './userAssignment';
-
 
 const AssignProjectPage = () => {
   const [users, setUsers] = useState([]);
@@ -35,6 +37,38 @@ const AssignProjectPage = () => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [confirmDeassign, setConfirmDeassign] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // ✅ Helper function to get role tag with proper styling
+  const getRoleTag = (role) => {
+    if (!role) return null;
+    
+    const normalizedRole = role.toLowerCase();
+    switch(normalizedRole) {
+      case 'admin':
+        return (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full font-medium">
+            <Shield className="w-3 h-3" />
+            Admin
+          </span>
+        );
+      case 'project_manager':
+      case 'projectmanager':
+        return (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full font-medium">
+            <Briefcase className="w-3 h-3" />
+            Project Manager
+          </span>
+        );
+      case 'user':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-medium">
+            <User className="w-3 h-3" />
+            User
+          </span>
+        );
+    }
+  };
 
   // ✅ Get logged in user from token or backend
   const fetchCurrentUser = async () => {
@@ -78,7 +112,6 @@ const AssignProjectPage = () => {
       setCurrentUser({ _id: 'default-admin', role: 'admin', name: 'Default Admin', email: 'admin@example.com' });
     }
   };
-
 
   const fetchData = async () => {
     try {
@@ -248,25 +281,6 @@ const AssignProjectPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-
-        {/* ✅ Temporary Role Switcher - Remove in Production */}
-        {/* <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800 mb-2">Testing Mode - Current Role: <strong>{currentUser.role}</strong></p>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => handleRoleChange('admin')}
-              className={`px-3 py-1 text-xs rounded ${currentUser?.role === 'admin' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
-            >
-              Admin
-            </button>
-            <button 
-              onClick={() => handleRoleChange('projectManager')}
-              className={`px-3 py-1 text-xs rounded ${currentUser?.role === 'projectManager' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
-            >
-              Project Manager
-            </button>
-          </div>
-        </div> */}
 
         {/* Header stats */}
         <div className="mb-8">
@@ -579,7 +593,7 @@ const AssignProjectPage = () => {
               </div>
             ) : (
               <>
-                {/* Desktop Table */}
+                {/* ✅ Updated Desktop Table with Role Tags */}
                 <div className="hidden md:block">
                   <table className="min-w-full border divide-y divide-gray-200 rounded-lg overflow-hidden">
                     <thead className="bg-gray-50">
@@ -595,8 +609,13 @@ const AssignProjectPage = () => {
                       {filteredAssignments.map((assignment, idx) => (
                         <tr key={assignment._id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {assignment.user?.name}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                {assignment.user?.name}
+                              </span>
+                              {getRoleTag(assignment.user?.role)}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {assignment.user?.email}
@@ -632,13 +651,16 @@ const AssignProjectPage = () => {
                   </table>
                 </div>
 
-                {/* Mobile Cards */}
+                {/* ✅ Updated Mobile Cards with Role Tags */}
                 <div className="block md:hidden space-y-4">
                   {filteredAssignments.map((assignment, idx) => (
                     <div key={assignment._id} className="p-4 border border-gray-200 rounded-lg shadow-sm bg-white">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{assignment.user?.name}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900">{assignment.user?.name}</h3>
+                            {getRoleTag(assignment.user?.role)}
+                          </div>
                           <p className="text-sm text-gray-500">{assignment.user?.email}</p>
                         </div>
                         <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">#{idx + 1}</span>
@@ -694,10 +716,18 @@ const AssignProjectPage = () => {
                   <h3 className="text-lg font-semibold text-gray-900">Confirm Deassignment</h3>
                 </div>
 
-                <p className="text-gray-600 mb-6">
-                  Are you sure you want to remove <strong>{confirmDeassign.user?.name}</strong> from
-                  project "<strong>{confirmDeassign.project?.name}</strong>"?
-                </p>
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-2">Are you sure you want to remove:</p>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <strong className="text-gray-900">{confirmDeassign.user?.name}</strong>
+                      {getRoleTag(confirmDeassign.user?.role)}
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      From project: <strong>{confirmDeassign.project?.name}</strong>
+                    </p>
+                  </div>
+                </div>
 
                 <div className="flex gap-3 justify-end">
                   <button
@@ -731,6 +761,5 @@ const AssignProjectPage = () => {
     </div>
   );
 };
-
 
 export default AssignProjectPage;

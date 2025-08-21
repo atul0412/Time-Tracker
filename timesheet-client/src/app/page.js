@@ -26,15 +26,15 @@ export default function DashboardPage() {
   const fetchProjects = async () => {
     try {
       let res;
+
       if (user?.role === "admin" || user?.role === "project_manager") {
         res = await api.get("/projects/allproject");
-        const projects = res.data.data || [];
-
-        // Wrap each project so the shape matches user assigned projects
-        const normalized = projects.map((p) => ({ project: p }));
-        setProjects(normalized);
+        console.log("Admin projects:", res.data.data);
+        setProjects(res.data.data || []);
       } else if (user?.role === "user") {
         res = await api.get(`/assignProject/user/${user.id}`);
+        // const assigned = res.data.data || [];
+        // const userProjects = assigned.map((item) => item.project);
         setProjects(res.data.data || []);
       } else {
         throw new Error("Invalid user data");

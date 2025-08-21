@@ -11,14 +11,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
+const getResetPasswordHtmlTemplate = (resetLink, userName = "User", userEmail = "") => {
   return `
   <!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Reset Your Password - Time-Tracker</title>
+    <title>Welcome to Time-Tracker - Set Your Password</title>
     <style>
       * {
         margin: 0;
@@ -118,6 +118,19 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
         font-weight: 300;
       }
       
+      /* Welcome Badge */
+      .welcome-badge {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 50px;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        display: inline-block;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+      }
+      
       /* Content Section */
       .content {
         padding: 50px 40px;
@@ -138,7 +151,7 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
       .message {
         font-size: 18px;
         color: #4b5563;
-        margin-bottom: 40px;
+        margin-bottom: 30px;
         line-height: 1.8;
         font-weight: 400;
       }
@@ -221,7 +234,7 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
       .security-notice p {
         color: #a16207;
         font-size: 16px;
-        margin: 0;
+        margin: 8px 0;
         font-weight: 500;
       }
       
@@ -258,6 +271,61 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
       .alternative-link a:hover {
         background: rgba(139, 92, 246, 0.2);
         transform: translateY(-1px);
+      }
+      
+      /* Next Steps */
+      .next-steps {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border: 2px solid #16a34a;
+        border-radius: 16px;
+        padding: 25px;
+        margin: 40px 0;
+      }
+      
+      .next-steps h3 {
+        color: #15803d;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      .steps-list {
+        list-style: none;
+        padding: 0;
+      }
+      
+      .steps-list li {
+        color: #166534;
+        font-size: 16px;
+        margin: 12px 0;
+        padding-left: 30px;
+        position: relative;
+        font-weight: 500;
+      }
+      
+      .steps-list li::before {
+        content: counter(step-counter);
+        counter-increment: step-counter;
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: #16a34a;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .steps-list {
+        counter-reset: step-counter;
       }
       
       /* Footer */
@@ -350,6 +418,12 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
           height: 70px;
           font-size: 28px;
         }
+        
+        .detail-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
+        }
       }
       
       @media (max-width: 480px) {
@@ -373,6 +447,7 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
     <div class="email-container">
       <!-- Header -->
       <div class="header">
+        <div class="welcome-badge">🎉 Welcome to Time-Tracker!</div>
         <h1>Time-Tracker</h1>
         <p>Professional timesheet management</p>
       </div>
@@ -382,32 +457,41 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
         <div class="greeting">Hello ${userName}! 👋</div>
         
         <div class="message">
-          We received a request to reset the password for your Time-Tracker account. If this was you, click the button below to create a new password.
+          Welcome to Time-Tracker! Your account has been successfully created by your system administrator. To get started, you'll need to set up your password.
         </div>
         
         <div class="button-container">
-          <a href="${resetLink}" class="reset-button">Reset My Password</a>
+          <a href="${resetLink}" class="reset-button">Set My Password</a>
         </div>
         
         <div class="security-notice">
           <h3>🔒 Security Information</h3>
-          <p><strong>This link expires in 1 hour</strong> for your security. If you didn't request this password reset, you can safely ignore this email - your account remains secure.</p>
+          <p><strong>This link expires in 1 hour</strong> for your security.</p>
+          <p>Once you set your password, you'll have full access to your Time-Tracker dashboard.</p>
+          <p>If you experience any issues, please contact your system administrator.</p>
+        </div>
+        
+        <div class="next-steps">
+          <h3>🚀 What's Next?</h3>
+          <ol class="steps-list">
+            <li>Click the "Set My Password" button above</li>
+            <li>Create a strong, secure password</li>
+            <li>Log in to your Time-Tracker dashboard</li>
+            <li>Complete your profile setup</li>
+            <li>Start tracking your time efficiently!</li>
+          </ol>
         </div>
         
         <div class="alternative-link">
           <p><strong>Button not working?</strong> Copy and paste this link into your browser:</p>
           <a href="${resetLink}">${resetLink}</a>
         </div>
-        
-        <div class="message">
-          If you're having trouble resetting your password, please contact your system administrator for assistance.
-        </div>
       </div>
       
       <!-- Footer -->
       <div class="footer">
         <div class="footer-content">
-          <h3>Best regards,</h3>
+          <h3>Welcome aboard!</h3>
           <p>The Time-Tracker Team</p>
           <p>This is an automated message, please do not reply to this email.</p>
         </div>
@@ -424,27 +508,35 @@ const getResetPasswordHtmlTemplate = (resetLink, userName = "User") => {
   `;
 };
 
-const getResetPasswordTextTemplate = (resetLink, userName = "User") => {
+const getResetPasswordTextTemplate = (resetLink, userName = "User", userEmail = "") => {
   return `
-Time-Tracker - Reset Your Password
+Time-Tracker - Welcome! Set Your Password
+
+🎉 WELCOME TO TIME-TRACKER! 🎉
 
 Hello ${userName},
 
-We received a request to reset the password for your Time-Tracker account.
+Welcome to Time-Tracker! Your account has been successfully created by your system administrator.
 
-Reset your password by clicking this link:
+To get started, please set up your password by clicking this link:
 ${resetLink}
 
-SECURITY NOTICE:
+🚀 WHAT'S NEXT?
+1. Click the link above to set your password
+2. Create a strong, secure password
+3. Log in to your Time-Tracker dashboard
+4. Complete your profile setup
+5. Start tracking your time efficiently!
+
+🔒 SECURITY INFORMATION:
 - This link expires in 1 hour for your security
-- If you didn't request this, you can safely ignore this email
-- Your account remains secure
+- Once you set your password, you'll have full access to your dashboard
+- If you experience any issues, contact your system administrator
 
-If the link doesn't work, copy and paste it into your browser.
+If the link doesn't work, copy and paste it into your browser:
+${resetLink}
 
-Having trouble? Contact your system administrator for assistance.
-
-Best regards,
+Welcome aboard!
 The Time-Tracker Team
 
 ---
@@ -452,6 +544,7 @@ This is an automated message, please do not reply to this email.
 🔒 Secure | ⚡ Fast | ✅ Reliable
   `;
 };
+
 
 const sendResetPasswordEmail = async (to, name = "User", url) => {
   // console.log("Sending password reset email to:", to);
