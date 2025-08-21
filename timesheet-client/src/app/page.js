@@ -6,7 +6,14 @@ import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { formatDateToReadable } from "../lib/dateFormate";
-import { FolderOpen, Calendar, User, Plus, Clock, ArrowRight } from "lucide-react";
+import {
+  FolderOpen,
+  Calendar,
+  User,
+  Plus,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -19,15 +26,15 @@ export default function DashboardPage() {
   const fetchProjects = async () => {
     try {
       let res;
-
       if (user?.role === "admin" || user?.role === "project_manager") {
         res = await api.get("/projects/allproject");
-        console.log("Admin projects:", res.data.data);
-        setProjects(res.data.data || []);
-      } else if (user?.role === "user" ) {
+        const projects = res.data.data || [];
+
+        // Wrap each project so the shape matches user assigned projects
+        const normalized = projects.map((p) => ({ project: p }));
+        setProjects(normalized);
+      } else if (user?.role === "user") {
         res = await api.get(`/assignProject/user/${user.id}`);
-        // const assigned = res.data.data || [];
-        // const userProjects = assigned.map((item) => item.project);
         setProjects(res.data.data || []);
       } else {
         throw new Error("Invalid user data");
@@ -67,12 +74,12 @@ export default function DashboardPage() {
                 Dashboard
               </h1>
               <p className="mt-2 text-gray-600">
-                {user?.role === "admin" 
-                  ? "Manage all projects and view comprehensive reports" 
+                {user?.role === "admin"
+                  ? "Manage all projects and view comprehensive reports"
                   : "Access your assigned projects and track your progress"}
               </p>
             </div>
-            
+
             {/* User Info Card */}
             {user && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -83,16 +90,19 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-semibold text-gray-900">{user.name}</p>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        user.role === "admin" 
-                          ? "bg-purple-100 text-purple-800" 
-                          : "bg-blue-100 text-blue-800"
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          user.role === "admin"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
                         {user.role}
                       </span>
                       {projects.length > 0 && (
                         <span className="text-gray-500 text-sm">
-                          {projects.length} {projects.length === 1 ? "project" : "projects"}
+                          {projects.length}{" "}
+                          {projects.length === 1 ? "project" : "projects"}
                         </span>
                       )}
                     </div>
@@ -109,7 +119,9 @@ export default function DashboardPage() {
           {(loading || authLoading) && (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
-              <p className="text-center text-gray-600 text-lg">Loading your projects...</p>
+              <p className="text-center text-gray-600 text-lg">
+                Loading your projects...
+              </p>
             </div>
           )}
 
@@ -117,8 +129,18 @@ export default function DashboardPage() {
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
               <div className="bg-red-100 rounded-full p-3 w-12 h-12 mx-auto mb-4">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <p className="text-red-800 font-semibold text-lg">{error}</p>
@@ -131,9 +153,11 @@ export default function DashboardPage() {
               <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-6">
                 <FolderOpen className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Projects Available</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No Projects Available
+              </h3>
               <p className="text-gray-600 mb-6">
-                {user?.role === "admin" 
+                {user?.role === "admin"
                   ? "Start by creating your first project to begin managing timesheets."
                   : "No projects have been assigned to you yet. Contact your administrator."}
               </p>
@@ -154,13 +178,16 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {user?.role === "admin" ? "All Projects" : "Your Assigned Projects"}
+                  {user?.role === "admin"
+                    ? "All Projects"
+                    : "Your Assigned Projects"}
                 </h2>
                 <span className="text-gray-500 text-sm">
-                  {projects.length} {projects.length === 1 ? "project" : "projects"} found
+                  {projects.length}{" "}
+                  {projects.length === 1 ? "project" : "projects"} found
                 </span>
               </div>
-              
+
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {projects.map((data) => (
                   <Link
@@ -170,7 +197,7 @@ export default function DashboardPage() {
                   >
                     {/* Top accent */}
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-600 via-purple-400 to-purple-600 rounded-t-xl"></div>
-                    
+
                     {/* Project Icon */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="bg-purple-100 p-2 rounded-lg group-hover:bg-purple-200 transition-colors duration-200">
@@ -184,15 +211,19 @@ export default function DashboardPage() {
                       <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-700 transition-colors duration-200 capitalize">
                         {data.project?.name}
                       </h3>
-                      
+
                       <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
-                        {data.project?.description || "No description available"}
+                        {data.project?.description ||
+                          "No description available"}
                       </p>
 
                       <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-xs text-gray-500 font-medium">
-                          Created {data.project?.createdAt ? formatDateToReadable(data.project?.createdAt) : "N/A"}
+                          Created{" "}
+                          {data.project?.createdAt
+                            ? formatDateToReadable(data.project?.createdAt)
+                            : "N/A"}
                         </span>
                       </div>
 
