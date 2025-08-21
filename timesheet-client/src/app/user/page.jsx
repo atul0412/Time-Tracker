@@ -24,6 +24,8 @@ import {
 import Link from 'next/link';
 import api from '../../lib/axios';
 import { toast } from 'react-hot-toast';
+// ✅ Import the date formatting function
+import { formatDateToReadable } from '../../lib/dateFormate';
 
 export default function AllUsersPage() {
   const [users, setUsers] = useState([]);
@@ -507,12 +509,9 @@ export default function AllUsersPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center">
                                 <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                                {/* ✅ Use formatDateToReadable for joined date */}
                                 {user.createdAt 
-                                  ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric'
-                                    })
+                                  ? formatDateToReadable(user.createdAt)
                                   : 'N/A'
                                 }
                               </div>
@@ -581,11 +580,9 @@ export default function AllUsersPage() {
                               
                               <div className="flex items-center text-xs text-gray-500">
                                 <Calendar className="w-3 h-3 mr-1" />
+                                {/* ✅ Use formatDateToReadable for mobile cards */}
                                 {user.createdAt 
-                                  ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric'
-                                    })
+                                  ? formatDateToReadable(user.createdAt)
                                   : 'N/A'
                                 }
                               </div>
@@ -621,7 +618,7 @@ export default function AllUsersPage() {
 
       {/* Add User Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -732,7 +729,7 @@ export default function AllUsersPage() {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -851,7 +848,7 @@ export default function AllUsersPage() {
 
       {/* ✅ Delete Confirmation Modal */}
       {deleteConfirmOpen && userToDelete && (
-        <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">

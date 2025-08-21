@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Calendar, Filter, Clock, X, Download, Users } from 'lucide-react'
 import api from '../../lib/axios'
 import { exportTimesheetToExcel } from '../../lib/exportToExcel'
+// ✅ Import the date formatting function
+import { formatDateToReadable } from '../../lib/dateFormate'
 
 export default function ReportPage() {
     const [viewMode, setViewMode] = useState('user')
@@ -294,6 +296,7 @@ export default function ReportPage() {
         setShowCustomDatePicker(false)
     }
 
+    // ✅ Updated getFilterLabel to use formatDateToReadable
     const getFilterLabel = () => {
         switch (dateFilter) {
             case 'today':
@@ -304,9 +307,8 @@ export default function ReportPage() {
                 return 'This Month'
             case 'custom':
                 if (customDateRange.startDate && customDateRange.endDate) {
-                    return `${new Date(customDateRange.startDate).toLocaleDateString()} - ${new Date(
-                        customDateRange.endDate,
-                    ).toLocaleDateString()}`
+                    // ✅ Use formatDateToReadable for consistent formatting
+                    return `${formatDateToReadable(customDateRange.startDate)} - ${formatDateToReadable(customDateRange.endDate)}`
                 }
                 return 'Custom Range'
             default:
@@ -554,77 +556,76 @@ export default function ReportPage() {
                 )}
 
                 {/* ✅ Updated Assigned Users List (Project View Only) - Now shows roles */}
-             {viewMode === 'project' && selectedProject && (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Users className="w-5 h-5 mr-2 text-purple-600" />
-            Assigned Users
-            {assignedUsers.length > 0 && (
-                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    {assignedUsers.length} users
-                </span>
-            )}
-        </h2>
+                {viewMode === 'project' && selectedProject && (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <Users className="w-5 h-5 mr-2 text-purple-600" />
+                            Assigned Users
+                            {assignedUsers.length > 0 && (
+                                <span className="ml-2 bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                    {assignedUsers.length} users
+                                </span>
+                            )}
+                        </h2>
 
-        {assignedUsersLoading ? (
-            <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                <span className="ml-2 text-gray-600">Loading assigned users...</span>
-            </div>
-        ) : assignedUsersError ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                    <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="ml-3">
-                        <p className="text-red-600 text-sm">{assignedUsersError}</p>
-                    </div>
-                </div>
-            </div>
-        ) : assignedUsers.length === 0 ? (
-            <div className="text-center py-8">
-                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No users assigned</h3>
-                <p className="text-gray-500">This project doesn't have any assigned users yet.</p>
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {assignedUsers.map((assignment, index) => {
-                    // Fix: Access the nested user object from the assignment
-                    const user = assignment.user || assignment;
-                    const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
-                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-
-                    return (
-                        <div key={user._id || assignment._id || index} className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
-                            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
-                                {initials}
+                        {assignedUsersLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                <span className="ml-2 text-gray-600">Loading assigned users...</span>
                             </div>
-                            <div className="min-w-0 flex-1">
-                                {/* ✅ Updated: Name with role inline */}
-                                <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-                                    {/* ✅ Role badge next to name */}
-                                    {user.role && (
-                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
-                                            {formatRole(user.role)}
-                                        </span>
-                                    )}
+                        ) : assignedUsersError ? (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div className="flex items-center">
+                                    <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div className="ml-3">
+                                        <p className="text-red-600 text-sm">{assignedUsersError}</p>
+                                    </div>
                                 </div>
-                                {/* ✅ Email on separate line */}
-                                {user.email && (
-                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                                )}
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
-        )}
-    </div>
-)}
+                        ) : assignedUsers.length === 0 ? (
+                            <div className="text-center py-8">
+                                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No users assigned</h3>
+                                <p className="text-gray-500">This project doesn't have any assigned users yet.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {assignedUsers.map((assignment, index) => {
+                                    // Fix: Access the nested user object from the assignment
+                                    const user = assignment.user || assignment;
+                                    const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
+                                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
 
+                                    return (
+                                        <div key={user._id || assignment._id || index} className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
+                                                {initials}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                {/* ✅ Updated: Name with role inline */}
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
+                                                    {/* ✅ Role badge next to name */}
+                                                    {user.role && (
+                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
+                                                            {formatRole(user.role)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* ✅ Email on separate line */}
+                                                {user.email && (
+                                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Assigned Projects Grid (user view only) */}
                 {viewMode === 'user' && selectedUser && assignedProjects.length > 0 && (
@@ -667,7 +668,6 @@ export default function ReportPage() {
                     </div>
                 )}
 
-                {/* Rest of your component remains the same - Timesheet Table, etc. */}
                 {/* Timesheet Table (shown in BOTH views with correct selections) */}
                 {(viewMode === 'project' && selectedProject) ||
                     (viewMode === 'user' && selectedUser && selectedProject) ? (
@@ -881,13 +881,9 @@ export default function ReportPage() {
                                                         return (
                                                             <tr key={index} className="hover:bg-gray-50">
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
+                                                                    {/* ✅ Use formatDateToReadable for table dates */}
                                                                     <div className="font-medium">
-                                                                        {data.date
-                                                                            ? new Date(data.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                                                            : ''}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-500">
-                                                                        {data.date ? new Date(data.date).getFullYear() : ''}
+                                                                        {formatDateToReadable(data.date)}
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[80px]">
