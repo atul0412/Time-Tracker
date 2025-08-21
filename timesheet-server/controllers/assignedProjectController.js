@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import AssignedProject from "../models/assignedProject.js";
-import Project from "../models/project.js"; // Add this import!
-import sendProjectAssignmentEmail from "../utils/sendEmail.js";
+import Project from "../models/project.js"; 
+import User from "../models/user.js"; // ✅ Add User import
+import { sendProjectAssignmentEmail } from "../utils/sendEmail.js"; // ✅ Import the email function
 
 // Assign project to user (admin OR project manager if they manage this project)
 export const assignProjectToUser = async (req, res) => {
@@ -28,12 +29,20 @@ export const assignProjectToUser = async (req, res) => {
         .json({ message: "Project already assigned to this user" });
     }
 
+    // ✅ Fetch project details for validation and email
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // ✅ Fetch user details for email
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     // Project manager additional check: Only allow if manager of project
     if (req.user.role === "project_manager") {
-      const project = await Project.findById(projectId);
-      if (!project) {
-        return res.status(404).json({ message: "Project not found" });
-      }
       // Check if current user is a manager of this project
       const isManager = Array.isArray(project.projectManagers) && project.projectManagers.some(
         manager =>
@@ -47,15 +56,50 @@ export const assignProjectToUser = async (req, res) => {
       }
     }
 
+    // ✅ Create assignment with populated data
     const assignment = await AssignedProject.create({
       user: userId,
       project: projectId,
     });
-    // sendProjectAssignmentEmail();
+
+    // ✅ Populate the assignment for response
+    const populatedAssignment = await AssignedProject.findById(assignment._id)
+      .populate('user', 'name email')
+      .populate('project', 'name description');
+
+    // ✅ Send project assignment email
+    try {
+      await sendProjectAssignmentEmail(
+        user.email,                    // to
+        user.name,                     // userName  
+        project.name,                  // projectName
+        project.description,           // projectDescription
+        req.user.name || 'Project Manager' // assignedBy
+      );
+      console.log(`✅ Project assignment email sent to ${user.email} for project: ${project.name}`);
+    } catch (emailError) {
+      console.error('❌ Failed to send project assignment email:', emailError);
+      // Don't fail the assignment if email fails - log it instead
+    }
+
     res.status(201).json({
       success: true,
-      message: "Project assigned successfully",
-      data: assignment,
+      message: "Project assigned successfully and notification sent",
+      data: {
+        assignment: populatedAssignment,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email
+        },
+        project: {
+          id: project._id,
+          name: project.name,
+          description: project.description
+        },
+        assignedBy: req.user.name || 'Project Manager',
+        assignedAt: new Date()
+      },
     });
   } catch (err) {
     console.error("Assign Project Error:", err);
@@ -68,7 +112,7 @@ export const assignProjectToUser = async (req, res) => {
 // ✅ NEW: Deassign project from user
 export const deassignProjectFromUser = async (req, res) => {
   if (req.user.role !== "admin" && req.user.role !== "project_manager") {
-    return res.status(403).json({ message: "Access denied: Admins only" });
+    return res.status(403).json({ message: "Access denied: Admins or project managers only" });
   }
 
   try {
@@ -149,10 +193,11 @@ export const deassignProjectFromUser = async (req, res) => {
     });
   }
 };
+
 // ✅ Alternative: Deassign by userId and projectId (if you prefer this approach)
 export const deassignProjectByIds = async (req, res) => {
   if (req.user.role !== "admin" && req.user.role !== "project_manager") {
-    return res.status(403).json({ message: "Access denied: Admins only" });
+    return res.status(403).json({ message: "Access denied: Admins or project managers only" });
   }
 
   try {
@@ -405,4 +450,3 @@ export const getAssignedUsersByProjectId = async (req, res) => {
     });
   }
 };
-
