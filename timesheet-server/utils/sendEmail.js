@@ -35,55 +35,55 @@ const getHtmlEmailTemplate = ({
     body {
       font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       color:#1f2937; line-height:1.6;
-      background: #faf7fc;
+      background: #faf5ff;
       padding: 40px 0; min-height:100vh;
     }
     .email-container {
       max-width:680px; margin:0 auto;
       background: #fff !important; border-radius:24px;
-      box-shadow:0 25px 50px rgba(88, 28, 135, 0.18);
+      box-shadow:0 25px 50px rgba(124, 45, 146, 0.18);
       overflow:hidden; position:relative;
     }
     .email-container::before {
       content:''; position:absolute;
       top:0; left:0; right:0; height:8px;
-      background:linear-gradient(135deg, #581c87 0%, #4c1d95 50%, #3730a3 100%);
+      background:linear-gradient(135deg, #7c2d92 0%, #6b21a8 50%, #581c87 100%);
     }
     .header {
-      background: linear-gradient(135deg, #581c87 0%, #4c1d95 50%, #3730a3 100%);
+      background: linear-gradient(135deg, #7c2d92 0%, #6b21a8 50%, #581c87 100%);
       padding:42px 32px; text-align:center; color:#fff !important;
     }
     .header-badge {
-      background:linear-gradient(135deg, #ffffff15 0%, #581c87 50%, #4c1d95 100%);
+      background:linear-gradient(135deg, rgba(255,255,255,0.15) 0%, #7c2d92 50%, #581c87 100%);
       color:#fff !important; padding:12px 28px; font-size:16px; font-weight:700;
       border-radius:50px; margin-bottom:18px; display:inline-block;
-      box-shadow:0 5px 14px rgba(88, 28, 135, 0.20);
-      border:0.5px solid #ffffff40;
+      box-shadow:0 5px 14px rgba(124, 45, 146, 0.25);
+      border:0.5px solid rgba(255,255,255,0.4);
     }
     .header h1 { font-size:30px; font-weight:800; margin:14px 0 10px 0;
-      background:linear-gradient(135deg, #fff 0%, #f1f0ff 100%);
+      background:linear-gradient(135deg, #fff 0%, #e2e8f0 100%);
       background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
-    .header p { font-size:18px; color:#e5e1f5; letter-spacing:.2px; }
+    .header p { font-size:18px; color:#f3e8ff; letter-spacing:.2px; }
     .greeting { font-size:22px; font-weight:700; margin:36px 0 12px 0;
-      background:linear-gradient(135deg, #581c87, #4c1d95);
+      background:linear-gradient(135deg, #7c2d92, #581c87);
       background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
     .main-message { font-size:18px; color:#4b5563; margin:0 0 32px 0; font-weight:400; }
     .action-btn-cont { text-align:center; margin:32px 0; }
     .action-btn {
       display:inline-block;
-      background: linear-gradient(135deg, #581c87 0%, #4c1d95 50%, #3730a3 100%);
+      background: linear-gradient(135deg, #7c2d92 0%, #6b21a8 50%, #581c87 100%);
       color:#ffffff !important; text-decoration:none; padding:18px 42px; border-radius:15px;
       font-size:18px; font-weight:700;
-      box-shadow: 0 8px 32px rgba(88,28,135,0.20), 0 3px 8px rgba(76,29,149,0.12);
-      transition:.2s; border:none; outline:none; border:2px solid #581c87cc;
+      box-shadow: 0 8px 32px rgba(124, 45, 146, 0.20), 0 3px 8px rgba(88, 28, 135, 0.12);
+      transition:.2s; border:none; outline:none; border:2px solid rgba(124, 45, 146, 0.8);
       position: relative; overflow:hidden;
     }
     .action-btn:hover {
-      background: linear-gradient(135deg, #3730a3 0%, #581c87 100%);
+      background: linear-gradient(135deg, #581c87 0%, #7c2d92 100%);
       color: #fff !important;
       transform: scale(1.04);
-      box-shadow: 0 8px 38px 6px rgba(88,28,135,0.28);
-      border-color: #4c1d95;
+      box-shadow: 0 8px 38px 6px rgba(124, 45, 146, 0.28);
+      border-color: #6b21a8;
     }
     .action-btn::after {
       content: ""; position: absolute; top: 0; left: -60%;
@@ -96,33 +96,33 @@ const getHtmlEmailTemplate = ({
     .action-btn:hover::after { left: 120%; }
     .info-block, .meta-info {
       margin:28px 0;
-      background:linear-gradient(135deg,#f8f5ff 0%,#ede9fe 100%);
-      border-radius:16px; border:2px solid #581c87;
+      background:linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+      border-radius:16px; border:2px solid #7c2d92;
       padding:28px 30px;
       color:#1f2937; font-size:15px;
     }
     .meta-info {
-      background:linear-gradient(135deg,#faf9ff 0%,#f3f1ff 100%);
-      border:1.5px solid #581c87;
+      background:linear-gradient(135deg, #f8fafc 0%, #f3e8ff 100%);
+      border:1.5px solid #7c2d92;
       display:flex; gap:24px; align-items:center; justify-content:center; font-size:15px; flex-direction: column;
       align-items: center;
     }
-    .meta-item { font-size:15px; margin:0 8px; color: #581c87; font-weight:600; }
+    .meta-item { font-size:15px; margin:0 8px; color: #6b21a8; font-weight: 600; }
     .footer {
-      background: linear-gradient(135deg, #581c87 0%, #4c1d95 50%, #3730a3 100%);
+      background: linear-gradient(135deg, #7c2d92 0%, #6b21a8 50%, #581c87 100%);
       padding:36px 30px; text-align:center; color:#fff !important;
     }
     .footer h3 { font-size:20px; font-weight:700;
-      background:linear-gradient(135deg,#fff 0%,#e5e1f5 92%);
+      background:linear-gradient(135deg, #fff 0%, #e2e8f0 92%);
       background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
-    .footer p { font-size:15px; opacity:0.93; margin:0 0 8px 0; color:#e5e1f5; }
+    .footer p { font-size:15px; opacity:0.93; margin:0 0 8px 0; }
     .footer-badges {
       display:flex; justify-content:center; gap:22px; margin-top:18px; flex-wrap:wrap;
     }
     .footer-badges span {
-      background:rgba(88,28,135,0.15); padding:8px 16px; border-radius:19px;
+      background:rgba(124, 45, 146, 0.15); padding:8px 16px; border-radius:19px;
       color:#fff !important; font-size:13px; font-weight:500;
-      border: 1.5px solid #ffffff30;
+      border: 1.5px solid rgba(255,255,255,0.25);
     }
     @media(max-width:700px) {
       .email-container { border-radius:0;}
@@ -162,6 +162,7 @@ const getHtmlEmailTemplate = ({
 </body>
 </html>
 `;
+
 
 
 
