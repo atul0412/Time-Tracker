@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// COMMON PROJECT THEME HTML EMAIL TEMPLATE (used for both assignment and password reset)
+// COMMON PROJECT THEME HTML EMAIL TEMPLATE (used for assignment, deassignment, and password reset)
 const getHtmlEmailTemplate = ({
   headerBadge,
   headerTitle,
@@ -163,9 +163,6 @@ const getHtmlEmailTemplate = ({
 </html>
 `;
 
-
-
-
 // --- PROJECT ASSIGNMENT EMAIL ---
 const getProjectAssignmentHtmlTemplate = (
   projectName,
@@ -188,8 +185,8 @@ const getProjectAssignmentHtmlTemplate = (
     </div>
   `,
   metaInfo: `
-    <span class="meta-item"> AssingBy-:👤 <b>${assignedBy}</b></span>
-    <span class="meta-item">Date-: 📅 <b>${new Date().toLocaleDateString("en-GB", {
+    <span class="meta-item">Assigned By: 👤 <b>${assignedBy}</b></span>
+    <span class="meta-item">Date: 📅 <b>${new Date().toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -200,6 +197,64 @@ const getProjectAssignmentHtmlTemplate = (
   showMeta: true
 });
 
+// --- PROJECT DEASSIGNMENT EMAIL ---
+const getProjectDeassignmentHtmlTemplate = (
+  projectName,
+  projectDescription,
+  deassignedBy,
+  userName = "User"
+) => getHtmlEmailTemplate({
+  headerBadge: "📋 Project Deassignment Notice",
+  headerTitle: "Time-Tracker",
+  headerDesc: "Professional Project Management & Time Tracking",
+  greeting: `Hello ${userName}! 👋`,
+  mainMessage: `We're writing to inform you that you have been removed from a project. This change is part of our ongoing project management and resource allocation process.`,
+  infoBlocks: `
+    <div class="info-block">
+      <b>Project: </b>${projectName}<br/>
+      <b>Description:</b> ${projectDescription || "Project details were previously available in your dashboard."}<br/><br/>
+      <b>Important Notes:</b><br/>
+      • Your access to this project has been revoked<br/>
+      • Any pending time entries should be submitted immediately<br/>
+      • Contact your manager if you have questions about this change
+    </div>
+  `,
+  metaInfo: `
+    <span class="meta-item">Deassigned By: 👤 <b>${deassignedBy}</b></span>
+    <span class="meta-item">Date: 📅 <b>${new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })}</b></span>
+  `,
+  footerMain: "Continue Your Journey! 📋",
+  footerNotes: "This is an automated notification. For questions about this change, contact your project manager.",
+  showMeta: true
+});
+
+// --- RESET PASSWORD EMAIL ---
+const getResetPasswordHtmlTemplate = (
+  resetLink,
+  userName = "User"
+) => getHtmlEmailTemplate({
+  headerBadge: "🔒 Password Reset",
+  headerTitle: "Time-Tracker",
+  headerDesc: "Professional Project Management & Time Tracking",
+  greeting: `Hello ${userName}! 👋`,
+  mainMessage: `You requested to reset your password. Click the link below to choose a new password and regain access to your account.`,
+  actionButton: `<a href="${resetLink}" class="action-btn">Reset My Password</a>`,
+  infoBlocks: `
+    <div class="info-block">
+      <b>Security Note:</b> This reset link will expire in 1 hour.<br/>
+      If you did not request a password reset, please ignore this message.
+    </div>
+  `,
+  footerMain: "Stay Secure with Time-Tracker",
+  footerNotes: "This is an automated message. If you have concerns, contact your admin.",
+  showMeta: true
+});
+
+// TEXT TEMPLATES
 const getProjectAssignmentTextTemplate = (
   projectName,
   projectDescription,
@@ -233,27 +288,39 @@ ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 Time-Tracker Team
 `;
 
-// --- RESET PASSWORD EMAIL ---
-const getResetPasswordHtmlTemplate = (
-  resetLink,
-  userName = "User"
-) => getHtmlEmailTemplate({
-  headerBadge: "🔒 Password Reset",
-  headerTitle: "Time-Tracker",
-  headerDesc: "Professional Project Management & Time Tracking",
-  greeting: `Hello ${userName}! 👋`,
-  mainMessage: `You requested to reset your password. Click the link below to choose a new password and regain access to your account.`,
-  actionButton: `<a href="${resetLink}" class="action-btn">Reset My Password</a>`,
-  infoBlocks: `
-    <div class="info-block">
-      <b>Security Note:</b> This reset link will expire in 1 hour.<br/>
-      If you did not request a password reset, please ignore this message.
-    </div>
-  `,
-  footerMain: "Stay Secure with Time-Tracker",
-  footerNotes: "This is an automated message. If you have concerns, contact your admin.",
-  showMeta: true
-});
+const getProjectDeassignmentTextTemplate = (
+  projectName,
+  projectDescription,
+  deassignedBy,
+  userName = "User",
+) => `
+TIME-TRACKER - PROJECT DEASSIGNMENT NOTICE
+
+📋 PROJECT DEASSIGNMENT NOTICE
+
+Hello ${userName},
+
+We're writing to inform you that you have been removed from a project.
+
+Project: ${projectName}
+Description: ${projectDescription || "Project details were previously available."}
+Deassigned by: ${deassignedBy}
+Deassignment Date: ${new Date().toLocaleDateString("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+})}
+
+Important Notes:
+• Your access to this project has been revoked
+• Submit any pending time entries immediately
+• Contact your manager if you have questions
+
+View your current projects: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
+
+--- 
+Time-Tracker Team
+`;
 
 const getResetPasswordTextTemplate = (
   resetLink,
@@ -302,8 +369,45 @@ const sendProjectAssignmentEmail = async (
       text,
       html,
     });
+    console.log("✅ Project assignment email sent successfully");
   } catch (error) {
     console.error("❌ Error sending project assignment email:", error);
+    throw error;
+  }
+};
+
+const sendProjectDeassignmentEmail = async (
+  to,
+  userName = "User",
+  projectName,
+  projectDescription = "",
+  deassignedBy = "Project Manager"
+) => {
+  const subject = `📋 Project Deassignment Notice: ${projectName} - Time-Tracker`;
+  const html = getProjectDeassignmentHtmlTemplate(
+    projectName,
+    projectDescription,
+    deassignedBy,
+    userName
+  );
+  const text = getProjectDeassignmentTextTemplate(
+    projectName,
+    projectDescription,
+    deassignedBy,
+    userName
+  );
+
+  try {
+    await transporter.sendMail({
+      from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`,
+      to,
+      subject,
+      text,
+      html,
+    });
+    console.log("✅ Project deassignment email sent successfully");
+  } catch (error) {
+    console.error("❌ Error sending project deassignment email:", error);
     throw error;
   }
 };
@@ -321,11 +425,12 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
       text,
       html,
     });
+    console.log("✅ Password reset email sent successfully");
   } catch (error) {
-    console.error("Error sending password reset email:", error);
+    console.error("❌ Error sending password reset email:", error);
     throw error;
   }
 };
 
-export { sendProjectAssignmentEmail };
+export { sendProjectAssignmentEmail, sendProjectDeassignmentEmail };
 export default sendResetPasswordEmail;
