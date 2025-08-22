@@ -35,73 +35,98 @@ const getHtmlEmailTemplate = ({
     body {
       font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       color:#1f2937; line-height:1.6;
-      background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);
-      padding:40px 0; min-height:100vh;
+      background: #f6f3fa;
+      padding: 40px 0; min-height:100vh;
     }
     .email-container {
       max-width:680px; margin:0 auto;
-      background:#fff; border-radius:24px;
-      box-shadow:0 25px 50px rgba(0,0,0,0.18);
+      background: #fff !important; border-radius:24px;
+      box-shadow:0 25px 50px rgba(136, 84, 208, 0.16);
       overflow:hidden; position:relative;
+      border: 1.5px solid #ba68d2;
     }
     .email-container::before {
       content:''; position:absolute;
       top:0; left:0; right:0; height:8px;
-      background:linear-gradient(90deg,#0ea5e9,#3b82f6,#6366f1,#8b5cf6,#a855f7);
+      background:linear-gradient(135deg, #ba68d2 0%, #651e83e0 50%, #6d467ae6 100%);
     }
-    .header { background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);
-      padding:42px 32px; text-align:center; color:#fff; }
+    .header {
+      background: linear-gradient(135deg, #ba68d2 0%, #651e83e0 50%, #6d467ae6 100%);
+      padding:42px 32px; text-align:center; color:#fff !important;
+    }
     .header-badge {
-      background:linear-gradient(135deg,#0ea5e9 0%,#3b82f6 50%,#6366f1 100%);
-      color:#fff; padding:12px 28px; font-size:16px; font-weight:700;
+      background:linear-gradient(135deg, #ffffff22 0%, #ba68d2 50%, #6d467ae6 100%);
+      color:#fff !important; padding:12px 28px; font-size:16px; font-weight:700;
       border-radius:50px; margin-bottom:18px; display:inline-block;
-      box-shadow:0 4px 14px rgba(59,130,246,0.23);
+      box-shadow:0 5px 14px rgba(136, 84, 208, 0.16);
+      border:0.5px solid #fff6;
     }
     .header h1 { font-size:30px; font-weight:800; margin:14px 0 10px 0;
-      background:linear-gradient(135deg,#fff 0%,#e2e8f0 100%);
+      background:linear-gradient(135deg, #fff 0%, #e2e8f0 100%);
       background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
-    .header p { font-size:18px; color:#e0e7ef; letter-spacing:.2px; }
-    .greeting { font-size:22px; font-weight:700;
-      margin:36px 0 12px 0; background:linear-gradient(135deg,#0ea5e9,#6366f1);
+    .header p { font-size:18px; color:#ede7fa; letter-spacing:.2px; }
+    .greeting { font-size:22px; font-weight:700; margin:36px 0 12px 0;
+      background:linear-gradient(135deg, #ba68d2, #6d467a);
       background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
     .main-message { font-size:18px; color:#365066; margin:0 0 32px 0; font-weight:400; }
     .action-btn-cont { text-align:center; margin:32px 0; }
     .action-btn {
-      display:inline-block; background:linear-gradient(135deg,#0f172a,#6366f1);
-      color:#fff; text-decoration:none; padding:18px 42px; border-radius:15px;
-      font-size:18px; font-weight:700; box-shadow:0 5px 20px rgba(59,130,246,0.21);
-      transition:.2s; border:none; outline:none;
+      display:inline-block;
+      background: linear-gradient(135deg, #ba68d2 0%, #651e83e0 50%, #6d467ae6 100%);
+      color:#ffffff !important; text-decoration:none; padding:18px 42px; border-radius:15px;
+      font-size:18px; font-weight:700;
+      box-shadow: 0 8px 32px rgba(186,104,210,0.16), 0 3px 8px rgba(101,30,131,0.08);
+      transition:.2s; border:none; outline:none; border:2px solid #ba68d2cc;
+      position: relative; overflow:hidden;
     }
-    .action-btn:hover { background:linear-gradient(135deg,#6366f1,#334155 100%); }
+    .action-btn:hover {
+      background: linear-gradient(135deg, #6d467a 0%, #ba68d2 100%);
+      color: #fff !important;
+      transform: scale(1.04);
+      box-shadow: 0 8px 38px 6px rgba(186,104,210,0.23);
+      border-color: #651e83e0;
+    }
+    .action-btn::after {
+      content: ""; position: absolute; top: 0; left: -60%;
+      width: 80%; height: 100%;
+      background: linear-gradient(120deg, rgba(255,255,255,0.13) 30%,rgba(255,255,255,0.04) 100%);
+      transform: skewX(-25deg);
+      transition: left 0.5s;
+      pointer-events: none;
+    }
+    .action-btn:hover::after { left: 120%; }
     .info-block, .meta-info {
       margin:28px 0;
-      background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);
-      border-radius:16px; border:2px solid #0ea5e9;
+      background:linear-gradient(135deg,#f6edfa 0%,#e8dffd 100%);
+      border-radius:16px; border:2px solid #ba68d2;
       padding:28px 30px;
-      color:#1e293b; font-size:15px;
+      color:black; font-size:15px;
     }
-    .meta-info { background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);
-      border:1.5px solid #6366f1; display:flex; gap:24px;
-      align-items:center; justify-content:center;
-      font-size:15px; }
-    .meta-item { font-size:15px; margin:0 8px; }
+    .meta-info {
+      background:linear-gradient(135deg,#f8fafc 0%,#efeaff 100%);
+      border:1.5px solid #ba68d2;
+      display:flex; gap:24px; align-items:center; justify-content:center; font-size:15px; flex-direction: column;
+      align-items: center;
+    }
+    .meta-item { font-size:15px; margin:0 8px; color: #733e99; }
     .footer {
-      background:linear-gradient(135deg,#1e293b 0%,#334155 100%);
-      padding:36px 30px; text-align:center; color:#d9e2ef;
+      background: linear-gradient(135deg, #ba68d2 0%, #651e83e0 50%, #6d467ae6 100%);
+      padding:36px 30px; text-align:center; color:#fff !important;
     }
     .footer h3 { font-size:20px; font-weight:700;
-      background:linear-gradient(135deg,#fff 0%,#e2e8f0 85%);
+      background:linear-gradient(135deg,#fff 0%,#d1c2e0 92%);
       background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
-    .footer p { font-size:15px; opacity:0.9; margin:0 0 8px 0; }
+    .footer p { font-size:15px; opacity:0.93; margin:0 0 8px 0; }
     .footer-badges {
       display:flex; justify-content:center; gap:22px; margin-top:18px; flex-wrap:wrap;
     }
     .footer-badges span {
-      background:rgba(59,130,246,0.08); padding:8px 16px; border-radius:19px;
-      color:#8ea7e7; font-size:13px; font-weight:500;
+      background:rgba(186,104,210,0.13); padding:8px 16px; border-radius:19px;
+      color:#fff !important; font-size:13px; font-weight:500;
+      border: 1.5px solid #fff4;
     }
     @media(max-width:700px) {
-      .email-container { border-radius:0; }
+      .email-container { border-radius:0;}
       .header,.content,.footer { padding:24px 12px; }
       .footer-badges { gap:7px; }
       .meta-info { flex-direction:column;gap:8px; }
@@ -139,6 +164,7 @@ const getHtmlEmailTemplate = ({
 </html>
 `;
 
+
 // --- PROJECT ASSIGNMENT EMAIL ---
 const getProjectAssignmentHtmlTemplate = (
   projectName,
@@ -151,7 +177,7 @@ const getProjectAssignmentHtmlTemplate = (
   headerDesc: "Professional Project Management & Time Tracking",
   greeting: `Hello ${userName}! 👋`,
   mainMessage: `Exciting news! You've been assigned to a new project. This is a fantastic opportunity to showcase your skills and contribute to our team's success. Get ready to make an impact!`,
-  actionButton: `<a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/projects" class="action-btn">
+  actionButton: `<a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/login" class="action-btn">
     🚀 Access Project Dashboard
   </a>`,
   infoBlocks: `
@@ -161,8 +187,8 @@ const getProjectAssignmentHtmlTemplate = (
     </div>
   `,
   metaInfo: `
-    <span class="meta-item">👤 <b>${assignedBy}</b></span>
-    <span class="meta-item">📅 <b>${new Date().toLocaleDateString("en-GB", {
+    <span class="meta-item"> AssingBy-:👤 <b>${assignedBy}</b></span>
+    <span class="meta-item">Date-: 📅 <b>${new Date().toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -200,7 +226,7 @@ Assignment Date: ${new Date().toLocaleDateString("en-GB", {
 2. Track your time and collaborate with your team.
 
 Welcome to the team!
-${process.env.FRONTEND_URL || "http://localhost:3000"}/projects
+${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
 --- 
 Time-Tracker Team
