@@ -22,11 +22,11 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401
+// Response interceptor: handle 500
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    if (error.response?.status === 500 && typeof window !== 'undefined') {
       window.location.href = '/login';
     }
     return Promise.reject(error);

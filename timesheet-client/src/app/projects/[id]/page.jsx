@@ -201,7 +201,8 @@ export default function ProjectDetailsPage() {
     const formattedManagers = existingManagers.map(manager => ({
       value: manager._id || manager.id,
       label: manager.name || manager.email || 'Unknown User',
-      email: manager.email || ''
+      email: manager.email || '',
+      role: manager.role || 'User'
     }));
 
     setProjectFormData({

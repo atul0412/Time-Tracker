@@ -23,6 +23,34 @@ const EditProjectModal = ({
     return !defaultFields.includes(field.fieldName);
   }) || [];
 
+  // ✅ Safe filtering with null checks - Fixed the filtering logic
+  const selectedManagerIds = formData.projectManagers?.map(manager => manager.value) || [];
+  console.log('Selected Manager IDs:', formData);
+  const availableUsers = users?.filter(user => {
+    // ✅ Add safety checks for user properties
+    const userRole = user?.role || 'unknown';
+    const userId = user?.value;
+    
+    // ✅ Filter out admin users AND already selected managers
+    return userRole !== 'admin' && !selectedManagerIds.includes(userId);
+  }) || [];
+
+  // ✅ Helper function to find user role from users list
+  const getUserRole = (userId) => {
+    const user = users?.find(u => u.value === userId);
+    return user?.role || 'No Role';
+  };
+
+  // ✅ Helper function to get user details by ID
+  const getUserDetails = (userId) => {
+    const user = users?.find(u => u.value === userId);
+    return {
+      role: user?.role || 'No Role',
+      label: user?.label || 'Unknown User',
+      email: user?.email || 'No email'
+    };
+  };
+
   return (
     <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -43,7 +71,7 @@ const EditProjectModal = ({
             <input
               type="text"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              value={formData.name}
+              value={formData.name || ''}
               onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
             />
           </div>
@@ -53,7 +81,7 @@ const EditProjectModal = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-24 resize-none"
-              value={formData.description}
+              value={formData.description || ''}
               onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
             />
           </div>
@@ -65,7 +93,7 @@ const EditProjectModal = ({
             </label>
             <Select
               isMulti
-              options={users}
+              options={availableUsers} // ✅ This now properly excludes selected managers
               value={formData.projectManagers || []}
               onChange={selectedOptions => {
                 setFormData(prev => ({
@@ -80,12 +108,14 @@ const EditProjectModal = ({
               classNamePrefix="react-select"
               isSearchable
               isClearable
-              closeMenuOnSelect={true}
-              hideSelectedOptions={false}
+              closeMenuOnSelect={false} // ✅ Changed to false to keep dropdown open
+              hideSelectedOptions={false} // ✅ Set to false since we're filtering manually
               blurInputOnSelect={false}
               noOptionsMessage={() =>
                 <div className="text-gray-500 text-sm py-2 px-3">
-                  {usersError ? 'Error loading users' : 'No users found'}
+                  {usersError ? 'Error loading users' : 
+                   availableUsers.length === 0 ? 'All available users are already selected' : 
+                   'No users found'}
                 </div>
               }
               loadingMessage={() =>
@@ -96,22 +126,35 @@ const EditProjectModal = ({
               }
               formatOptionLabel={option => {
                 if (!option) return null;
-                const displayName = option.label || 'Unknown User';
-                const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                console.log('Option:', option);
+                // ✅ Safe role handling with fallback
+                const role = option.role || 'No Role';
+                const label = option.label || 'Unknown User';
+                const email = option.email || 'No email';
+                
+                const displayText = `${label} - ${role}`;
+                const initials = label.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                
                 return (
                   <div className="flex items-center gap-3 py-1">
                     <div className="w-7 h-7 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
                       {initials}
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium text-gray-900 text-sm">{displayName}</span>
-                      <span className="text-xs text-gray-500">{option.email || 'No email'}</span>
+                      <span className="font-medium text-gray-900 text-sm">{displayText}</span>
+                      <span className="text-xs text-gray-500">{email}</span>
                     </div>
                   </div>
                 );
               }}
-              getOptionLabel={option => option.label}
-              getOptionValue={option => option.value}
+              getOptionLabel={option => {
+                // ✅ Safe label generation with fallbacks
+                if (!option) return '';
+                const role = option?.role || 'No Role';
+                const label = option.label || 'Unknown User';
+                return `${label} - ${role}`;
+              }}
+              getOptionValue={option => option?.value || ''}
             />
 
             {/* Selected Preview */}
@@ -122,14 +165,36 @@ const EditProjectModal = ({
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {formData.projectManagers.map((manager, index) => {
-                    const displayName = manager.label || 'Unknown User';
-                    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                    // ✅ Get updated role information from users list
+                    const userDetails = getUserDetails(manager?.value);
+                    
+                    // Use the latest role from users list, fallback to stored role, then default
+                    const currentRole = userDetails.role !== 'No Role' ? userDetails.role : (manager?.role || 'No Role');
+                    const currentLabel = userDetails.label !== 'Unknown User' ? userDetails.label : (manager?.label || 'Unknown User');
+                    const value = manager?.value || index;
+                    
+                    const displayName = currentRole === 'admin' ? currentRole : `${currentLabel} - ${currentRole}`;
+                    const initials = currentRole === 'admin' ? 'A' : currentLabel.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                    
                     return (
-                      <div key={manager.value || index} className="flex items-center gap-2 bg-white px-2 py-1 rounded-full border border-purple-200 text-sm">
+                      <div key={value} className="flex items-center gap-2 bg-white px-2 py-1 rounded-full border border-purple-200 text-sm">
                         <div className="w-4 h-4 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
                           {initials}
                         </div>
                         <span className="text-gray-700">{displayName}</span>
+                        <button
+                          onClick={() => {
+                            const updatedManagers = formData.projectManagers.filter(m => m?.value !== manager?.value);
+                            setFormData(prev => ({
+                              ...prev,
+                              projectManagers: updatedManagers
+                            }));
+                          }}
+                          className="ml-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Remove manager"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
                     );
                   })}
@@ -150,16 +215,16 @@ const EditProjectModal = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const customFieldsList = formData.fields.filter(f => {
+                      const customFieldsList = formData.fields?.filter(f => {
                         const defaultFields = [
                           "task", "date", "workingHours", "Frontend/Backend",
                           "Developer Name", "Task", "Date", "Working Hours"
                         ];
-                        return !defaultFields.includes(f.fieldName);
-                      });
-                      const updated = formData.fields.filter((_, i) =>
-                        i !== customFieldsList.findIndex(cf => cf.fieldName === field.fieldName)
-                      );
+                        return !defaultFields.includes(f?.fieldName);
+                      }) || [];
+                      const updated = formData.fields?.filter((_, i) =>
+                        i !== customFieldsList.findIndex(cf => cf?.fieldName === field?.fieldName)
+                      ) || [];
                       setFormData(prev => ({
                         ...prev,
                         fields: updated
@@ -176,10 +241,10 @@ const EditProjectModal = ({
                     type="text"
                     placeholder="Field Name"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    value={field.fieldName}
+                    value={field?.fieldName || ''}
                     onChange={e => {
-                      const updated = [...formData.fields];
-                      const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
+                      const updated = [...(formData.fields || [])];
+                      const actualIndex = updated.findIndex(f => f?.fieldName === field?.fieldName && f?.fieldType === field?.fieldType);
                       if (actualIndex !== -1) {
                         updated[actualIndex].fieldName = e.target.value;
                         setFormData(prev => ({
@@ -191,10 +256,10 @@ const EditProjectModal = ({
                   />
                   <select
                     className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    value={field.fieldType}
+                    value={field?.fieldType || 'String'}
                     onChange={e => {
-                      const updated = [...formData.fields];
-                      const actualIndex = updated.findIndex(f => f.fieldName === field.fieldName && f.fieldType === field.fieldType);
+                      const updated = [...(formData.fields || [])];
+                      const actualIndex = updated.findIndex(f => f?.fieldName === field?.fieldName && f?.fieldType === field?.fieldType);
                       if (actualIndex !== -1) {
                         updated[actualIndex].fieldType = e.target.value;
                         setFormData(prev => ({
@@ -229,7 +294,7 @@ const EditProjectModal = ({
               onClick={() => {
                 setFormData(prev => ({
                   ...prev,
-                  fields: [...prev.fields, { fieldName: "", fieldType: "String" }]
+                  fields: [...(prev.fields || []), { fieldName: "", fieldType: "String" }]
                 }));
               }}
               className="px-4 py-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
