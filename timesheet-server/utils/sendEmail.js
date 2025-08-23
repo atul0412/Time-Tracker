@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// COMMON PROJECT THEME HTML EMAIL TEMPLATE (used for assignment, deassignment, and password reset)
+// Main HTML template
 const getHtmlEmailTemplate = ({
   headerBadge,
   headerTitle,
@@ -163,7 +163,7 @@ const getHtmlEmailTemplate = ({
 </html>
 `;
 
-// --- PROJECT ASSIGNMENT EMAIL ---
+// Unchanged project assignment email
 const getProjectAssignmentHtmlTemplate = (
   projectName,
   projectDescription,
@@ -187,17 +187,17 @@ const getProjectAssignmentHtmlTemplate = (
   metaInfo: `
     <span class="meta-item">Assigned By: 👤 <b>${assignedBy}</b></span>
     <span class="meta-item">Date: 📅 <b>${new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })}</b></span>
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}</b></span>
   `,
   footerMain: "Welcome to the Team! 🎯",
   footerNotes: "This is an automated notification. For project-specific questions, contact your project manager.",
   showMeta: true
 });
 
-// --- PROJECT DEASSIGNMENT EMAIL ---
+// Unchanged project deassignment email
 const getProjectDeassignmentHtmlTemplate = (
   projectName,
   projectDescription,
@@ -222,17 +222,17 @@ const getProjectDeassignmentHtmlTemplate = (
   metaInfo: `
     <span class="meta-item">Deassigned By: 👤 <b>${deassignedBy}</b></span>
     <span class="meta-item">Date: 📅 <b>${new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })}</b></span>
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}</b></span>
   `,
   footerMain: "Continue Your Journey! 📋",
   footerNotes: "This is an automated notification. For questions about this change, contact your project manager.",
   showMeta: true
 });
 
-// --- RESET PASSWORD EMAIL ---
+// Password reset email (button and link are "/reset-password?token=...")
 const getResetPasswordHtmlTemplate = (
   resetLink,
   userName = "User"
@@ -254,46 +254,54 @@ const getResetPasswordHtmlTemplate = (
   showMeta: true
 });
 
-// TEXT TEMPLATES
-const getProjectAssignmentTextTemplate = (
-  projectName,
-  projectDescription,
-  assignedBy,
+// Welcome email (button link also "/reset-password?token=...")
+const getWelcomeEmailHtmlTemplate = (
   userName = "User",
-) => `
+  setupPasswordLink
+) => getHtmlEmailTemplate({
+  headerBadge: "🎉 Welcome Aboard!",
+  headerTitle: "Time-Tracker",
+  headerDesc: "Professional Project Management & Time Tracking",
+  greeting: `Hello ${userName}! 👋`,
+  mainMessage: `We're excited to have you on board with Time-Tracker!
+  Your account has been created successfully. To get started, please set your password and explore your dashboard.`,
+  actionButton: `<a href="${setupPasswordLink}" class="action-btn">🚀 Set My Password</a>`,
+  infoBlocks: `
+    <div class="info-block">
+      <b>Why Time-Tracker?</b><br/>
+      • Track your tasks & hours seamlessly<br/>
+      • Collaborate with your team<br/>
+      • Access detailed analytics & reports<br/>
+      • Manage everything from one place
+    </div>
+  `,
+  footerMain: "Welcome to Time-Tracker 🚀",
+  footerNotes: "This is an automated message. Please set your password to activate your account.",
+  showMeta: false
+});
+
+// --- Plain text templates
+const getProjectAssignmentTextTemplate = (projectName, projectDescription, assignedBy, userName = "User") => `
 TIME-TRACKER - NEW PROJECT ASSIGNMENT
 
 🎯 NEW PROJECT ASSIGNMENT! 🎯
 
 Hello ${userName},
 
-Exciting news! You've been assigned to a new project. This is a fantastic opportunity.
+Exciting news! You've been assigned to a new project.
 
 Project: ${projectName}
 Description: ${projectDescription || "This project is ready for your expertise."}
 Assigned by: ${assignedBy}
-Assignment Date: ${new Date().toLocaleDateString("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-})}
+Assignment Date: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
 
-1. Log in to your dashboard to view and manage your project.
-2. Track your time and collaborate with your team.
+Login to your dashboard: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
-Welcome to the team!
-${process.env.FRONTEND_URL || "http://localhost:3000"}/login
-
---- 
+---
 Time-Tracker Team
 `;
 
-const getProjectDeassignmentTextTemplate = (
-  projectName,
-  projectDescription,
-  deassignedBy,
-  userName = "User",
-) => `
+const getProjectDeassignmentTextTemplate = (projectName, projectDescription, deassignedBy, userName = "User") => `
 TIME-TRACKER - PROJECT DEASSIGNMENT NOTICE
 
 📋 PROJECT DEASSIGNMENT NOTICE
@@ -305,11 +313,7 @@ We're writing to inform you that you have been removed from a project.
 Project: ${projectName}
 Description: ${projectDescription || "Project details were previously available."}
 Deassigned by: ${deassignedBy}
-Deassignment Date: ${new Date().toLocaleDateString("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-})}
+Deassignment Date: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
 
 Important Notes:
 • Your access to this project has been revoked
@@ -318,14 +322,11 @@ Important Notes:
 
 View your current projects: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
---- 
+---
 Time-Tracker Team
 `;
 
-const getResetPasswordTextTemplate = (
-  resetLink,
-  userName = "User"
-) => `
+const getResetPasswordTextTemplate = (resetLink, userName = "User") => `
 TIME-TRACKER - PASSWORD RESET
 
 Hello ${userName},
@@ -334,12 +335,36 @@ You requested to reset your password.
 Open the link below to choose a new password:
 ${resetLink}
 
-This reset link will expire in 1 hour. If you did not request this, you may ignore this message.
+This reset link will expire in 1 hour.
+If you did not request this, you may ignore this message.
 
+---
 Time-Tracker Team
 `;
 
-// EMAIL SENDING FUNCTIONS
+const getWelcomeEmailTextTemplate = (userName = "User", setupPasswordLink) => `
+TIME-TRACKER - WELCOME 🎉
+
+Hello ${userName},
+
+Welcome to Time-Tracker! Your account has been created.
+
+👉 Next step: Set your password here:
+${setupPasswordLink}
+
+Why use Time-Tracker?
+• Track your tasks & hours seamlessly
+• Collaborate with your team
+• Access analytics and reports
+• All-in-one platform
+
+We’re excited to have you on board! 🚀
+
+---
+Time-Tracker Team
+`;
+
+// --- SEND EMAIL FUNCTIONS
 const sendProjectAssignmentEmail = async (
   to,
   userName = "User",
@@ -348,27 +373,11 @@ const sendProjectAssignmentEmail = async (
   assignedBy = "Project Manager"
 ) => {
   const subject = `🎯 New Project Assignment: ${projectName} - Time-Tracker`;
-  const html = getProjectAssignmentHtmlTemplate(
-    projectName,
-    projectDescription,
-    assignedBy,
-    userName
-  );
-  const text = getProjectAssignmentTextTemplate(
-    projectName,
-    projectDescription,
-    assignedBy,
-    userName
-  );
+  const html = getProjectAssignmentHtmlTemplate(projectName, projectDescription, assignedBy, userName);
+  const text = getProjectAssignmentTextTemplate(projectName, projectDescription, assignedBy, userName);
 
   try {
-    await transporter.sendMail({
-      from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`,
-      to,
-      subject,
-      text,
-      html,
-    });
+    await transporter.sendMail({ from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`, to, subject, text, html });
     console.log("✅ Project assignment email sent successfully");
   } catch (error) {
     console.error("❌ Error sending project assignment email:", error);
@@ -384,27 +393,11 @@ const sendProjectDeassignmentEmail = async (
   deassignedBy = "Project Manager"
 ) => {
   const subject = `📋 Project Deassignment Notice: ${projectName} - Time-Tracker`;
-  const html = getProjectDeassignmentHtmlTemplate(
-    projectName,
-    projectDescription,
-    deassignedBy,
-    userName
-  );
-  const text = getProjectDeassignmentTextTemplate(
-    projectName,
-    projectDescription,
-    deassignedBy,
-    userName
-  );
+  const html = getProjectDeassignmentHtmlTemplate(projectName, projectDescription, deassignedBy, userName);
+  const text = getProjectDeassignmentTextTemplate(projectName, projectDescription, deassignedBy, userName);
 
   try {
-    await transporter.sendMail({
-      from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`,
-      to,
-      subject,
-      text,
-      html,
-    });
+    await transporter.sendMail({ from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`, to, subject, text, html });
     console.log("✅ Project deassignment email sent successfully");
   } catch (error) {
     console.error("❌ Error sending project deassignment email:", error);
@@ -418,13 +411,7 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
   const text = getResetPasswordTextTemplate(url, name);
 
   try {
-    await transporter.sendMail({
-      from: `"Time-Tracker" <${process.env.EMAIL}>`,
-      to,
-      subject,
-      text,
-      html,
-    });
+    await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
     console.log("✅ Password reset email sent successfully");
   } catch (error) {
     console.error("❌ Error sending password reset email:", error);
@@ -432,5 +419,20 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
   }
 };
 
-export { sendProjectAssignmentEmail, sendProjectDeassignmentEmail };
+const sendWelcomeEmail = async (to, userName = "User", setupPasswordLink) => {
+  const subject = `🎉 Welcome to Time-Tracker, ${userName}!`;
+  const html = getWelcomeEmailHtmlTemplate(userName, setupPasswordLink);
+  const text = getWelcomeEmailTextTemplate(userName, setupPasswordLink);
+
+  try {
+    await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
+    console.log("✅ Welcome email sent successfully");
+  } catch (error) {
+    console.error("❌ Error sending welcome email:", error);
+    throw error;
+  }
+};
+
+// --- EXPORTS ---
+export { sendProjectAssignmentEmail, sendProjectDeassignmentEmail, sendWelcomeEmail };
 export default sendResetPasswordEmail;

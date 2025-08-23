@@ -1,7 +1,7 @@
 import User from '../models/user.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import sendEmail  from '../utils/sendEmail.js';// Assume you have this
+import sendEmail, { sendWelcomeEmail } from '../utils/sendEmail.js';// Assume you have this
 import { decrypt, encrypt } from '../utils/encryption.js'
 
 export const registerUser = async (req, res) => {
@@ -20,18 +20,18 @@ export const registerUser = async (req, res) => {
       role: role || 'user',
     });
 
-     const payload = {
+    const payload = {
       id: user._id,
       email: user.email
     };
 
-  const encryptedToken = encodeURIComponent(encrypt(payload));
+    const encryptedToken = encodeURIComponent(encrypt(payload));
     // console.log(encryptedToken)
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
 
     // const message = `Click this link to reset your password: ${resetUrl}`;
 
-    await sendEmail(user.email, "Reset Password", resetUrl);
+    await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
 
     res.status(201).json({ message: 'User registered successfully', userId: user._id });
   } catch (err) {
@@ -54,7 +54,7 @@ export const loginUser = async (req, res) => {
       expiresIn: '2d',
     });
 
-    res.json({ token, user: { name: user.name, email: user.email, role: user.role, id:user._id } });
+    res.json({ token, user: { name: user.name, email: user.email, role: user.role, id: user._id } });
   } catch (err) {
     res.status(500).json({ message: 'Login failed', error: err.message });
   }
@@ -181,7 +181,7 @@ export const forgotPassword = async (req, res) => {
       email: user.email
     };
 
-  const encryptedToken = encodeURIComponent(encrypt(payload));
+    const encryptedToken = encodeURIComponent(encrypt(payload));
     // console.log(encryptedToken)
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
 
@@ -254,7 +254,7 @@ export const resetPassword = async (req, res) => {
 
     await user.save();
     res.status(200).json({ message: "Password reset successful." });
-    
+
   } catch (err) {
     console.error("Reset Password Error:", err.message);
     return res.status(400).json({ message: "Invalid or tampered token" });
