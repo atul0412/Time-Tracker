@@ -44,7 +44,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br  flex items-center justify-center p-4">
+    <div className=" bg-gradient-to-br  flex items-center justify-center p-4">
       <div className="w-full max-w-md mx-auto">
         
         {/* Back to Login Link */}

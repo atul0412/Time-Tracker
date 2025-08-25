@@ -313,7 +313,7 @@ export const deassignProjectByIds = async (req, res) => {
 export const getAllAssignedProjects = async (req, res) => {
   try {
     const assignments = await AssignedProject.find()
-      .populate("user", "name email")
+      .populate("user", "name email role")
       .populate("project", "name description");
 
     res.status(200).json({
@@ -408,7 +408,7 @@ export const getAssignmentById = async (req, res) => {
     }
 
     const assignment = await AssignedProject.findById(assignmentId)
-      .populate("user", "name email")
+      .populate("user", "name email role")
       .populate("project", "name description");
 
     if (!assignment) {

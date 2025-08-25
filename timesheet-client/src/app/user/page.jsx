@@ -265,7 +265,7 @@ export default function AllUsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50 flex items-center justify-center">
+      <div className=" bg-gradient-to-br from-purple-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">Loading users...</p>
@@ -276,7 +276,7 @@ export default function AllUsersPage() {
 
   if (error && users.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50 flex items-center justify-center">
+      <div className=" bg-gradient-to-br from-purple-50 to-purple-50 flex items-center justify-center">
         <div className="bg-white rounded-xl p-8 shadow-lg border border-red-200 text-center max-w-md">
           <div className="bg-red-100 rounded-full p-3 w-12 h-12 mx-auto mb-4">
             <X className="w-6 h-6 text-red-600" />
@@ -295,7 +295,7 @@ export default function AllUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-50">
+    <div className=" bg-gradient-to-br from-purple-50 to-purple-50">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">

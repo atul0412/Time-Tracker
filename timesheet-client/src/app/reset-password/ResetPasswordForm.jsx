@@ -88,7 +88,7 @@ export default function ResetPasswordForm() {
 
   if (!tokenValid) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 flex items-center justify-center p-4">
+      <div className=" bg-gradient-to-br from-gray-50 to-purple-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             {/* Error Header */}
@@ -122,7 +122,7 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br flex items-center justify-center p-4">
+    <div className=" bg-gradient-to-br flex items-center justify-center p-4">
       <div className="w-full max-w-md mx-auto">
         
         {/* Back to Login Link */}

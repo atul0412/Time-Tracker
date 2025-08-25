@@ -241,7 +241,8 @@ const AssignProjectPage = () => {
     const matchesSearch =
       assignment.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assignment.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.project?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      assignment.project?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      assignment.user?.role?.toLowerCase().includes(searchTerm.toLowerCase());
     if (filterBy === 'all') return matchesSearch;
     return matchesSearch;
   });
@@ -267,7 +268,7 @@ const AssignProjectPage = () => {
 
   if (loading || !currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg">Loading project assignments...</p>
@@ -279,7 +280,7 @@ const AssignProjectPage = () => {
   const availableProjects = filteredProjects();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
 
         {/* Header stats */}
@@ -496,7 +497,7 @@ const AssignProjectPage = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search users, emails, projects..."
+                  placeholder="Search users, emails, projects, roles..."
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 w-80"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -537,7 +538,7 @@ const AssignProjectPage = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search users, emails, projects..."
+                  placeholder="Search users, emails, projects, roles..."
                   className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -593,95 +594,113 @@ const AssignProjectPage = () => {
               </div>
             ) : (
               <>
-                {/* ✅ Updated Desktop Table with Role Tags */}
+                {/* ✅ Enhanced Desktop Table with Role Column */}
                 <div className="hidden md:block">
-                  <table className="min-w-full border divide-y divide-gray-200 rounded-lg overflow-hidden">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredAssignments.map((assignment, idx) => (
-                        <tr key={assignment._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-medium text-gray-900">
-                                {assignment.user?.name}
-                              </span>
-                              {getRoleTag(assignment.user?.role)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {assignment.user?.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {assignment.project?.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => setModalUser(assignment.user)}
-                                className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
-                              >
-                                <Eye className="w-4 h-4" /> View
-                              </button>
-                              <button
-                                onClick={() => setConfirmDeassign(assignment)}
-                                disabled={deassigning[assignment._id]}
-                                className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {deassigning[assignment._id] ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                                ) : (
-                                  <UserMinus className="w-4 h-4" />
-                                )}
-                                {deassigning[assignment._id] ? 'Removing...' : 'Remove'}
-                              </button>
-                            </div>
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border divide-y divide-gray-200 rounded-lg overflow-hidden">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredAssignments.map((assignment, idx) => (
+                          <tr key={assignment._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                              {idx + 1}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {assignment.user?.name || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getRoleTag(assignment.user?.role)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {assignment.user?.email || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {assignment.project?.name || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex items-center justify-end gap-3">
+                                <button
+                                  onClick={() => setModalUser(assignment.user)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-sm font-medium"
+                                >
+                                  <Eye className="w-4 h-4" /> View
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeassign(assignment)}
+                                  disabled={deassigning[assignment._id]}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {deassigning[assignment._id] ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                  ) : (
+                                    <UserMinus className="w-4 h-4" />
+                                  )}
+                                  {deassigning[assignment._id] ? 'Removing...' : 'Remove'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
-                {/* ✅ Updated Mobile Cards with Role Tags */}
+                {/* ✅ Enhanced Mobile Cards with Prominent Role Display */}
                 <div className="block md:hidden space-y-4">
                   {filteredAssignments.map((assignment, idx) => (
-                    <div key={assignment._id} className="p-4 border border-gray-200 rounded-lg shadow-sm bg-white">
+                    <div key={assignment._id} className="p-4 border border-gray-200 rounded-lg shadow-sm bg-white hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900">{assignment.user?.name}</h3>
-                            {getRoleTag(assignment.user?.role)}
+                          <div className="flex flex-col gap-2 mb-2">
+                            <h3 className="font-semibold text-gray-900 text-lg">
+                              {assignment.user?.name || 'N/A'}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              {getRoleTag(assignment.user?.role)}
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-sm text-gray-500">{assignment.user?.email || 'N/A'}</span>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-500">{assignment.user?.email}</p>
                         </div>
-                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">#{idx + 1}</span>
+                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded font-medium">
+                          #{idx + 1}
+                        </span>
                       </div>
 
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-600 mb-1">Assigned Project:</p>
-                        <p className="font-medium text-gray-900">{assignment.project?.name}</p>
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-600 mb-1 font-medium uppercase tracking-wide">
+                          Assigned Project
+                        </p>
+                        <p className="font-semibold text-gray-900 text-lg">
+                          {assignment.project?.name || 'N/A'}
+                        </p>
                       </div>
 
-                      <div className="flex justify-between items-center gap-2">
+                      <div className="flex gap-2">
                         <button
                           onClick={() => setModalUser(assignment.user)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
                         >
                           <Eye className="w-4 h-4" /> View Details
                         </button>
                         <button
                           onClick={() => setConfirmDeassign(assignment)}
                           disabled={deassigning[assignment._id]}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {deassigning[assignment._id] ? (
                             <>
@@ -704,35 +723,40 @@ const AssignProjectPage = () => {
           </div>
         </div>
 
-        {/* ✅ Confirmation Modal for Deassignment */}
+        {/* ✅ Enhanced Confirmation Modal for Deassignment */}
         {confirmDeassign && (
-          <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-red-100 p-2 rounded-lg">
+                  <div className="bg-red-100 p-3 rounded-lg">
                     <AlertTriangle className="w-6 h-6 text-red-600" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900">Confirm Deassignment</h3>
                 </div>
 
-                <div className="mb-4">
-                  <p className="text-gray-600 mb-2">Are you sure you want to remove:</p>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <strong className="text-gray-900">{confirmDeassign.user?.name}</strong>
-                      {getRoleTag(confirmDeassign.user?.role)}
+                <div className="mb-6">
+                  <p className="text-gray-600 mb-3">Are you sure you want to remove this assignment?</p>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-gray-900">{confirmDeassign.user?.name}</strong>
+                        {getRoleTag(confirmDeassign.user?.role)}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <strong>Email:</strong> {confirmDeassign.user?.email}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <strong>Project:</strong> {confirmDeassign.project?.name}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500">
-                      From project: <strong>{confirmDeassign.project?.name}</strong>
-                    </p>
                   </div>
                 </div>
 
                 <div className="flex gap-3 justify-end">
                   <button
                     onClick={() => setConfirmDeassign(null)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     Cancel
                   </button>
@@ -743,7 +767,7 @@ const AssignProjectPage = () => {
                       confirmDeassign.project?.name
                     )}
                     disabled={deassigning[confirmDeassign._id]}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     {deassigning[confirmDeassign._id] && (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
