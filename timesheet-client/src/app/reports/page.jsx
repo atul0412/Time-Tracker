@@ -1,11 +1,49 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, Filter, Clock, X, Download, Users } from 'lucide-react'
+import { Calendar, Filter, Clock, X, Download, Users, AlertTriangle, Trash2, Edit, Pencil } from 'lucide-react'
 import api from '../../lib/axios'
 import { exportTimesheetToExcel } from '../../lib/exportToExcel'
-// ✅ Import the date formatting function
 import { formatDateToReadable } from '../../lib/dateFormate'
+import toast from 'react-hot-toast'
+
+// DeleteConfirmationModal component
+function DeleteConfirmationModal({ show, title, message, onConfirm, onCancel, loading }) {
+    if (!show) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                    <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{title}</h3>
+                <p className="text-gray-600 text-center mb-6">{message}</p>
+                <div className="flex justify-end space-x-4">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                        disabled={loading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        className={`px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={loading}
+                    >
+                        {loading && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        )}
+                        {loading ? 'Deleting...' : 'Delete'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function ReportPage() {
     const [viewMode, setViewMode] = useState('user')
@@ -20,7 +58,7 @@ export default function ReportPage() {
     const [loadingProjects, setLoadingProjects] = useState(false)
     const [errorProjects, setErrorProjects] = useState('')
     const [timesheetsLoading, setTimesheetsLoading] = useState(false)
-
+    
     // Add states for assigned users
     const [assignedUsers, setAssignedUsers] = useState([])
     const [assignedUsersLoading, setAssignedUsersLoading] = useState(false)
@@ -31,22 +69,32 @@ export default function ReportPage() {
     const [customDateRange, setCustomDateRange] = useState({ startDate: '', endDate: '' })
     const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
 
-    // ✅ Helper function to format user display name with role
+    // New states for editing functionality
+    const [editMode, setEditMode] = useState(false)
+    const [editableTimesheets, setEditableTimesheets] = useState([])
+
+    // Delete confirmation modal state
+    const [deleteConfirmation, setDeleteConfirmation] = useState({
+        show: false,
+        id: null,
+        loading: false,
+        title: '',
+        message: '',
+    });
+
+    // Helper functions for formatting
     const formatUserDisplayName = (user) => {
         if (!user) return 'Unknown User';
         const name = user.name || user.username || user.email || 'Unknown User';
         const role = user.role;
         
-        // Format role for display
         const roleDisplay = role ? ` (${formatRole(role)})` : '';
         return `${name}${roleDisplay}`;
     };
 
-    // ✅ Helper function to format role names
     const formatRole = (role) => {
         if (!role) return '';
         
-        // Convert role names to display format
         const roleMap = {
             'admin': 'Admin',
             'project_manager': 'Project Manager',
@@ -59,7 +107,6 @@ export default function ReportPage() {
         return roleMap[role] || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     };
 
-    // ✅ Helper function to get role badge color
     const getRoleBadgeColor = (role) => {
         const colorMap = {
             'admin': 'bg-red-100 text-red-800 border-red-200',
@@ -72,7 +119,233 @@ export default function ReportPage() {
         return colorMap[role] || 'bg-gray-100 text-gray-800 border-gray-200';
     };
 
-    // Fetch all users on mount
+    const getDateRange = (filterType) => {
+        const today = new Date()
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        
+        switch (filterType) {
+            case 'today':
+                return {
+                    start: startOfDay,
+                    end: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1),
+                }
+            case 'weekly': {
+                const startOfWeek = new Date(startOfDay)
+                startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay())
+                const endOfWeek = new Date(startOfWeek)
+                endOfWeek.setDate(startOfWeek.getDate() + 6)
+                return { start: startOfWeek, end: endOfWeek }
+            }
+            case 'monthly': {
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
+                return { start: startOfMonth, end: endOfMonth }
+            }
+            case 'custom':
+                if (customDateRange.startDate && customDateRange.endDate) {
+                    return {
+                        start: new Date(customDateRange.startDate),
+                        end: new Date(customDateRange.endDate + 'T23:59:59'),
+                    }
+                }
+                return null
+            default:
+                return null
+        }
+    }
+
+    const filteredTimesheets = timesheets.filter((ts) => {
+        if (!ts.data) return false
+
+        if (viewMode === 'user') {
+            if (!selectedUser) return false
+            const devNameInTS = (ts.data['Developer Name'] || ts.data['Developer name'] || '').trim().toLowerCase()
+            const selectedName = (selectedUser.name || '').trim().toLowerCase()
+            if (devNameInTS !== selectedName) return false
+        }
+
+        if (dateFilter !== 'all') {
+            const dateRange = getDateRange(dateFilter)
+            if (dateRange) {
+                const entryDate = new Date(ts.data.date)
+                if (entryDate < dateRange.start || entryDate > dateRange.end) {
+                    return false
+                }
+            }
+        }
+
+        return true
+    })
+
+    const totalHours = filteredTimesheets.reduce(
+        (sum, ts) => sum + parseFloat(ts.data?.['Effort Hours'] || ts.data?.workingHours || 0),
+        0
+    )
+
+    const uniqueDevelopers = [...new Set(filteredTimesheets.map(ts => (ts.data['Developer Name'] || ts.data['Developer name'] || '').trim()))].length
+
+    // Delete modal handlers
+    const showDeleteConfirmation = (timesheetId) => {
+        setDeleteConfirmation({
+            show: true,
+            id: timesheetId,
+            loading: false,
+            title: 'Delete Timesheet Entry',
+            message: 'Are you sure you want to delete this timesheet entry? This action cannot be undone.',
+        });
+    };
+
+    const hideDeleteConfirmation = () => {
+        setDeleteConfirmation({
+            show: false,
+            id: null,
+            loading: false,
+            title: '',
+            message: '',
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        setDeleteConfirmation(prev => ({ ...prev, loading: true }));
+        try {
+            await api.delete(`/timesheets/${deleteConfirmation.id}`);
+            setTimesheets(prev => prev.filter(ts => ts._id !== deleteConfirmation.id));
+            if (editMode) {
+                setEditableTimesheets(prev => prev.filter(ts => ts._id !== deleteConfirmation.id));
+            }
+            hideDeleteConfirmation();
+            toast.success('Timesheet entry deleted successfully!');
+        } catch (error) {
+            console.error('Failed to delete timesheet:', error);
+            toast.error('Failed to delete timesheet entry. Please try again later.');
+        } finally {
+            setDeleteConfirmation(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const handleToggleEditMode = () => {
+        if (editMode) {
+            handleSaveAllChanges();
+        } else {
+            setEditableTimesheets(filteredTimesheets.map(ts => ({ ...ts })));
+        }
+        setEditMode(!editMode);
+    };
+
+    const handleSaveAllChanges = async () => {
+        try {
+            const updatePromises = editableTimesheets.map(ts => {
+                if (ts._id) {
+                    return api.put(`/timesheets/${ts._id}`, ts.data);
+                }
+                return Promise.resolve();
+            });
+            await Promise.all(updatePromises);
+            setTimesheets(editableTimesheets);
+            toast.success('All changes saved successfully!');
+        } catch (error) {
+            console.error('Failed to save changes:', error);
+            toast.error('Failed to save some changes. Please try again.');
+        }
+    };
+
+    const handleInputChange = (index, field, value) => {
+        // Define which fields are editable
+        const editableFields = ['Effort Hours', 'task', 'date'];
+        
+        // Only allow changes to editable fields
+        if (!editableFields.includes(field)) {
+            console.warn(`Attempted to edit non-editable field: ${field}`);
+            return;
+        }
+
+        setEditableTimesheets(prev => {
+            const newEditable = [...prev];
+            if (!newEditable[index]) return newEditable;
+            
+            newEditable[index] = {
+                ...newEditable[index],
+                data: {
+                    ...newEditable[index].data,
+                    [field]: value
+                }
+            };
+            return newEditable;
+        });
+    };
+
+    const handleDateFilterChange = (filterType) => {
+        setDateFilter(filterType)
+        if (filterType === 'custom') {
+            setShowCustomDatePicker(true)
+        } else {
+            setShowCustomDatePicker(false)
+            setCustomDateRange({ startDate: '', endDate: '' })
+        }
+    }
+
+    const applyCustomDateRange = () => {
+        if (customDateRange.startDate && customDateRange.endDate) {
+            setDateFilter('custom')
+            setShowCustomDatePicker(false)
+        }
+    }
+
+    const clearCustomDateRange = () => {
+        setCustomDateRange({ startDate: '', endDate: '' })
+        setDateFilter('all')
+        setShowCustomDatePicker(false)
+    }
+
+    const getFilterLabel = () => {
+        switch (dateFilter) {
+            case 'today':
+                return 'Today'
+            case 'weekly':
+                return 'This Week'
+            case 'monthly':
+                return 'This Month'
+            case 'custom':
+                if (customDateRange.startDate && customDateRange.endDate) {
+                    return `${formatDateToReadable(customDateRange.startDate)} - ${formatDateToReadable(customDateRange.endDate)}`
+                }
+                return 'Custom Range'
+            default:
+                return 'All Time'
+        }
+    }
+
+    const handleExport = () => {
+        try {
+            if (!selectedProject || !selectedProject._id) {
+                console.error('No project selected for export')
+                toast.error('Please select a project to export timesheets')
+                return
+            }
+
+            if (!filteredTimesheets || filteredTimesheets.length === 0) {
+                toast.error('No timesheet data available to export')
+                return
+            }
+
+            const safeProject = {
+                _id: selectedProject._id,
+                name: selectedProject.name || 'Unnamed Project',
+                ...selectedProject
+            }
+
+            const filename = viewMode === 'user'
+                ? `timesheet_${selectedUser?.name || 'user'}_${safeProject.name}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+                : `timesheet_${safeProject.name}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
+
+            exportTimesheetToExcel(safeProject, filteredTimesheets, filename)
+        } catch (error) {
+            console.error('Export failed:', error)
+            toast.error('Failed to export timesheet. Please try again.')
+        }
+    }
+
+    // useEffect hooks
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -87,7 +360,6 @@ export default function ReportPage() {
         fetchUsers()
     }, [])
 
-    // Fetch assigned projects when selectedUser changes (user view)
     useEffect(() => {
         if (viewMode !== 'user' || !selectedUser?._id) return
 
@@ -104,7 +376,6 @@ export default function ReportPage() {
         fetchAssignedProjects()
     }, [viewMode, selectedUser?._id])
 
-    // Fetch all projects (project view)
     useEffect(() => {
         if (viewMode !== 'project') return;
 
@@ -112,15 +383,12 @@ export default function ReportPage() {
             setLoadingProjects(true);
             try {
                 const res = await api.get('/projects/allproject');
-
                 const rawData =
                     Array.isArray(res.data) ? res.data :
                         Array.isArray(res.data?.data) ? res.data.data :
                             Array.isArray(res.data?.projects) ? res.data.projects : [];
 
-                // Extract only the project objects
                 const projectsArray = rawData.map(item => item.project || item);
-
                 setProjects(projectsArray);
             } catch (err) {
                 console.error('❌ Error fetching projects:', err);
@@ -133,7 +401,6 @@ export default function ReportPage() {
         fetchAllProjects();
     }, [viewMode]);
 
-    // Fetch assigned users when a project is selected in project view
     useEffect(() => {
         if (viewMode !== 'project' || !selectedProject?._id) {
             setAssignedUsers([])
@@ -144,19 +411,11 @@ export default function ReportPage() {
             setAssignedUsersLoading(true)
             setAssignedUsersError('')
             try {
-                // Use your existing API endpoint for getting assigned users by project ID
                 const response = await api.get(`/assignProject/assigned-users/${selectedProject._id}`)
-
-                console.log('Fetched assigned users:', response.data)
-
-                // Handle different possible response structures
                 const users = response.data?.data || response.data || []
                 setAssignedUsers(users)
-
             } catch (err) {
                 console.error('Failed to fetch assigned users:', err)
-
-                // More specific error handling
                 if (err.response?.status === 404) {
                     setAssignedUsersError('No assigned users found for this project')
                     setAssignedUsers([])
@@ -175,7 +434,6 @@ export default function ReportPage() {
         fetchAssignedUsers()
     }, [viewMode, selectedProject?._id])
 
-    // Fetch timesheets when relevant dependencies change
     useEffect(() => {
         const fetchTimesheets = async () => {
             if (viewMode === 'user') {
@@ -207,154 +465,15 @@ export default function ReportPage() {
         fetchTimesheets()
     }, [viewMode, selectedUser?._id, selectedProject?._id])
 
-    const getDateRange = (filterType) => {
-        const today = new Date()
-        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-
-        switch (filterType) {
-            case 'today':
-                return {
-                    start: startOfDay,
-                    end: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1),
-                }
-            case 'weekly': {
-                const startOfWeek = new Date(startOfDay)
-                startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay()) // Sunday start
-                const endOfWeek = new Date(startOfWeek)
-                endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday end
-                return { start: startOfWeek, end: endOfWeek }
-            }
-            case 'monthly': {
-                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-                const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
-                return { start: startOfMonth, end: endOfMonth }
-            }
-            case 'custom':
-                if (customDateRange.startDate && customDateRange.endDate) {
-                    return {
-                        start: new Date(customDateRange.startDate),
-                        end: new Date(customDateRange.endDate + 'T23:59:59'),
-                    }
-                }
-                return null
-            default:
-                return null
+    // Initialize editable timesheets when entering edit mode
+    useEffect(() => {
+        if (editMode && filteredTimesheets.length > 0) {
+            setEditableTimesheets(filteredTimesheets.map(ts => ({ ...ts })));
         }
-    }
-
-    // Filter timesheets according to view mode and date
-    const filteredTimesheets = timesheets.filter((ts) => {
-        if (!ts.data) return false
-
-        if (viewMode === 'user') {
-            if (!selectedUser) return false
-            const devNameInTS = (ts.data['Developer Name'] || ts.data['Developer name'] || '').trim().toLowerCase()
-            const selectedName = (selectedUser.name || '').trim().toLowerCase()
-            if (devNameInTS !== selectedName) return false
-        }
-
-        if (dateFilter !== 'all') {
-            const dateRange = getDateRange(dateFilter)
-            if (dateRange) {
-                const entryDate = new Date(ts.data.date)
-                if (entryDate < dateRange.start || entryDate > dateRange.end) {
-                    return false
-                }
-            }
-        }
-
-        return true
-    })
-
-    const totalHours = filteredTimesheets.reduce(
-        (sum, ts) => sum + parseFloat(ts.data?.['Effort Hours'] || ts.data?.workingHours || 0),
-        0
-    )
-
-    const uniqueDevelopers = [...new Set(filteredTimesheets.map(ts => (ts.data['Developer Name'] || ts.data['Developer name'] || '').trim()))].length
-
-    const handleDateFilterChange = (filterType) => {
-        setDateFilter(filterType)
-        if (filterType === 'custom') {
-            setShowCustomDatePicker(true)
-        } else {
-            setShowCustomDatePicker(false)
-            setCustomDateRange({ startDate: '', endDate: '' })
-        }
-    }
-
-    const applyCustomDateRange = () => {
-        if (customDateRange.startDate && customDateRange.endDate) {
-            setDateFilter('custom')
-            setShowCustomDatePicker(false)
-        }
-    }
-
-    const clearCustomDateRange = () => {
-        setCustomDateRange({ startDate: '', endDate: '' })
-        setDateFilter('all')
-        setShowCustomDatePicker(false)
-    }
-
-    // ✅ Updated getFilterLabel to use formatDateToReadable
-    const getFilterLabel = () => {
-        switch (dateFilter) {
-            case 'today':
-                return 'Today'
-            case 'weekly':
-                return 'This Week'
-            case 'monthly':
-                return 'This Month'
-            case 'custom':
-                if (customDateRange.startDate && customDateRange.endDate) {
-                    // ✅ Use formatDateToReadable for consistent formatting
-                    return `${formatDateToReadable(customDateRange.startDate)} - ${formatDateToReadable(customDateRange.endDate)}`
-                }
-                return 'Custom Range'
-            default:
-                return 'All Time'
-        }
-    }
-
-    // Fixed export function with better error handling
-    const handleExport = () => {
-        try {
-            // Ensure we have valid project data
-            if (!selectedProject || !selectedProject._id) {
-                console.error('No project selected for export')
-                alert('Please select a project to export timesheets')
-                return
-            }
-
-            // Ensure we have timesheets to export
-            if (!filteredTimesheets || filteredTimesheets.length === 0) {
-                alert('No timesheet data available to export')
-                return
-            }
-
-            // Create a safe project object with required fields
-            const safeProject = {
-                _id: selectedProject._id,
-                name: selectedProject.name || 'Unnamed Project',
-                // Add any other fields your export function might need
-                ...selectedProject
-            }
-
-            // Generate filename based on context
-            const filename = viewMode === 'user'
-                ? `timesheet_${selectedUser?.name || 'user'}_${safeProject.name}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
-                : `timesheet_${safeProject.name}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
-
-            // Call the export function
-            exportTimesheetToExcel(safeProject, filteredTimesheets, filename)
-        } catch (error) {
-            console.error('Export failed:', error)
-            alert('Failed to export timesheet. Please try again.')
-        }
-    }
+    }, [editMode])
 
     return (
-        <div className=" bg-gradient-to-br py-8">
+        <div className="bg-gradient-to-br py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-8">
@@ -384,6 +503,7 @@ export default function ReportPage() {
                                     setSelectedProject(null)
                                     setTimesheets([])
                                     setAssignedUsers([])
+                                    setEditMode(false)
                                 }}
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
@@ -405,6 +525,7 @@ export default function ReportPage() {
                                     setSelectedProject(null)
                                     setTimesheets([])
                                     setAssignedUsers([])
+                                    setEditMode(false)
                                 }}
                                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
                             />
@@ -453,10 +574,9 @@ export default function ReportPage() {
                                     Choose a user to view their timesheets
                                 </option>
                                 {users
-                                    .filter((user) => user.role !== "admin") // 🚫 Exclude admins
+                                    .filter((user) => user.role !== "admin")
                                     .map((user) => (
                                         <option key={user._id} value={user._id}>
-                                            {/* ✅ Show name with role */}
                                             {formatUserDisplayName(user)}
                                         </option>
                                     ))}
@@ -526,7 +646,6 @@ export default function ReportPage() {
                             <div className="ml-3 flex-1">
                                 <div className="flex items-center gap-3">
                                     <h3 className="text-lg font-medium text-gray-800">{selectedUser.name}</h3>
-                                    {/* ✅ Show role badge */}
                                     {selectedUser.role && (
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(selectedUser.role)}`}>
                                             {formatRole(selectedUser.role)}
@@ -555,7 +674,7 @@ export default function ReportPage() {
                     </div>
                 )}
 
-                {/* ✅ Updated Assigned Users List (Project View Only) - Now shows roles */}
+                {/* Updated Assigned Users List (Project View Only) - Now shows roles */}
                 {viewMode === 'project' && selectedProject && (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -593,7 +712,6 @@ export default function ReportPage() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {assignedUsers.map((assignment, index) => {
-                                    // Fix: Access the nested user object from the assignment
                                     const user = assignment.user || assignment;
                                     const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown User';
                                     const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
@@ -604,17 +722,14 @@ export default function ReportPage() {
                                                 {initials}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                {/* ✅ Updated: Name with role inline */}
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-                                                    {/* ✅ Role badge next to name */}
                                                     {user.role && (
                                                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${getRoleBadgeColor(user.role)}`}>
                                                             {formatRole(user.role)}
                                                         </span>
                                                     )}
                                                 </div>
-                                                {/* ✅ Email on separate line */}
                                                 {user.email && (
                                                     <p className="text-xs text-gray-500 truncate">{user.email}</p>
                                                 )}
@@ -668,7 +783,7 @@ export default function ReportPage() {
                     </div>
                 )}
 
-                {/* Timesheet Table (shown in BOTH views with correct selections) */}
+                {/* Enhanced Timesheet Table (shown in BOTH views with correct selections) */}
                 {(viewMode === 'project' && selectedProject) ||
                     (viewMode === 'user' && selectedUser && selectedProject) ? (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -690,39 +805,23 @@ export default function ReportPage() {
                                             <span className="text-sm text-indigo-600">Devs: </span>
                                             <span className="text-lg font-bold text-indigo-800">{uniqueDevelopers}</span>
                                         </div>
-                                        {/* Fixed Export button */}
+                                        
+                                        {/* Edit Button */}
                                         <button
-                                            onClick={() => {
-                                                console.log('Export button clicked');
-                                                console.log('Selected Project:', selectedProject);
-                                                console.log('Filtered Timesheets:', filteredTimesheets);
+                                            onClick={handleToggleEditMode}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border shadow-sm transition-colors font-medium ${
+                                                editMode 
+                                                    ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
+                                                    : 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm'
+                                            }`}
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                            {editMode ? 'Save' : 'Edit'}
+                                        </button>
 
-                                                try {
-                                                    // Create enhanced project object
-                                                    const enhancedProject = {
-                                                        ...selectedProject,
-                                                        fields: selectedProject?.fields || [
-                                                            { fieldName: 'date' },
-                                                            { fieldName: 'Developer Name' },
-                                                            { fieldName: 'task' },
-                                                            { fieldName: 'Effort Hours' },
-                                                            { fieldName: 'Frontend/Backend' }
-                                                        ]
-                                                    };
-
-                                                    // Generate filename
-                                                    const filename = viewMode === 'user'
-                                                        ? `timesheet_${selectedUser?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'user'}_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`
-                                                        : `timesheet_${selectedProject?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'project'}_${dateFilter === 'all' ? 'all' : getFilterLabel().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
-
-                                                    console.log('Calling exportTimesheetToExcel with:', { enhancedProject, filteredTimesheets, filename });
-
-                                                    exportTimesheetToExcel(enhancedProject, filteredTimesheets, filename);
-                                                } catch (error) {
-                                                    console.error('Export failed:', error);
-                                                    alert('Failed to export timesheet: ' + error.message);
-                                                }
-                                            }}
+                                        {/* Export Button */}
+                                        <button
+                                            onClick={handleExport}
                                             disabled={!selectedProject || filteredTimesheets.length === 0}
                                             className="flex items-center gap-2 bg-green-800 hover:bg-green-950 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg border border-green-700 shadow-sm transition-colors font-medium"
                                         >
@@ -873,29 +972,67 @@ export default function ReportPage() {
                                                         <th className="px-3 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] whitespace-nowrap">
                                                             Type
                                                         </th>
+                                                        <th className="px-3 sm:px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] whitespace-nowrap">
+                                                            Actions
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
-                                                    {filteredTimesheets.map((ts, index) => {
+                                                    {(editMode ? editableTimesheets : filteredTimesheets).map((ts, index) => {
                                                         const data = ts.data || {}
                                                         return (
-                                                            <tr key={index} className="hover:bg-gray-50">
+                                                            <tr key={ts._id || index} className="hover:bg-gray-50">
+                                                                {/* DATE FIELD - EDITABLE */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
-                                                                    {/* ✅ Use formatDateToReadable for table dates */}
-                                                                    <div className="font-medium">
-                                                                        {formatDateToReadable(data.date)}
-                                                                    </div>
+                                                                    {editMode ? (
+                                                                        <input
+                                                                            type="date"
+                                                                            value={data.date?.slice(0, 10) || ''}
+                                                                            onChange={(e) => handleInputChange(index, 'date', e.target.value)}
+                                                                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="font-medium">
+                                                                            {formatDateToReadable(data.date)}
+                                                                        </div>
+                                                                    )}
                                                                 </td>
+
+                                                                {/* EFFORT HOURS FIELD - EDITABLE */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[80px]">
-                                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                                        {data['Effort Hours'] || data.workingHours || '0'}h
-                                                                    </span>
+                                                                    {editMode ? (
+                                                                        <input
+                                                                            type="number"
+                                                                            step="0.1"
+                                                                            min="0"
+                                                                            value={data['Effort Hours'] || data.workingHours || ''}
+                                                                            onChange={(e) => handleInputChange(index, 'Effort Hours', e.target.value)}
+                                                                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                                            {data['Effort Hours'] || data.workingHours || '0'}h
+                                                                        </span>
+                                                                    )}
                                                                 </td>
+
+                                                                {/* TASK FIELD - EDITABLE */}
                                                                 <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[300px]">
-                                                                    <div className="line-clamp-2 break-words" title={data.task}>
-                                                                        {data.task}
-                                                                    </div>
+                                                                    {editMode ? (
+                                                                        <textarea
+                                                                            value={data.task || ''}
+                                                                            onChange={(e) => handleInputChange(index, 'task', e.target.value)}
+                                                                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                                                            rows="2"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="line-clamp-2 break-words" title={data.task}>
+                                                                            {data.task}
+                                                                        </div>
+                                                                    )}
                                                                 </td>
+
+                                                                {/* DEVELOPER NAME FIELD - READ-ONLY */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px]">
                                                                     <div className="flex items-center">
                                                                         <div className="bg-purple-100 rounded-full p-1 mr-2 flex-shrink-0">
@@ -906,13 +1043,27 @@ export default function ReportPage() {
                                                                         <span className="truncate">{data['Developer Name'] || data['Developer name']}</span>
                                                                     </div>
                                                                 </td>
+
+                                                                {/* TYPE FIELD - READ-ONLY */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
-                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${data['Frontend/Backend'] === 'Frontend'
-                                                                        ? 'bg-green-100 text-green-800'
-                                                                        : 'bg-orange-100 text-orange-800'
-                                                                        }`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                        data['Frontend/Backend'] === 'Frontend'
+                                                                            ? 'bg-green-100 text-green-800'
+                                                                            : 'bg-orange-100 text-orange-800'
+                                                                    }`}>
                                                                         {data['Frontend/Backend']}
                                                                     </span>
+                                                                </td>
+
+                                                                {/* ACTIONS FIELD */}
+                                                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-center">
+                                                                    <button
+                                                                        onClick={() => showDeleteConfirmation(ts._id)}
+                                                                        className="inline-flex items-center gap-1 px-3 py-1 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 transition-colors"
+                                                                        title="Delete this timesheet entry"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         )
@@ -935,32 +1086,95 @@ export default function ReportPage() {
                     </div>
                 ) : null}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal 
+                show={deleteConfirmation.show}
+                title={deleteConfirmation.title}
+                message={deleteConfirmation.message}
+                onConfirm={handleConfirmDelete}
+                onCancel={hideDeleteConfirmation}
+                loading={deleteConfirmation.loading}
+            />
+
             {/* Custom scrollbar styles */}
             <style jsx>{`
-        .scrollbar-thin {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(147, 51, 234, 0.3) rgba(243, 244, 246, 1);
-        }
-        .scrollbar-thin::-webkit-scrollbar {
-          height: 8px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-track {
-          background: rgba(243, 244, 246, 1);
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: rgba(147, 51, 234, 0.3);
-          border-radius: 4px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: rgba(147, 51, 234, 0.5);
-        }
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
+                .scrollbar-thin {
+                  scrollbar-width: thin;
+                  scrollbar-color: rgba(147, 51, 234, 0.3) rgba(243, 244, 246, 1);
+                }
+                .scrollbar-thin::-webkit-scrollbar {
+                  height: 8px;
+                }
+                .scrollbar-thin::-webkit-scrollbar-track {
+                  background: rgba(243, 244, 246, 1);
+                }
+                .scrollbar-thin::-webkit-scrollbar-thumb {
+                  background: rgba(147, 51, 234, 0.3);
+                  border-radius: 4px;
+                }
+                .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+                  background: rgba(147, 51, 234, 0.5);
+                }
+                .line-clamp-2 {
+                  display: -webkit-box;
+                  -webkit-line-clamp: 2;
+                  -webkit-box-orient: vertical;
+                  overflow: hidden;
+                }
+            `}</style>
         </div>
     )
+// DeleteConfirmationModal component
+function DeleteConfirmationModal({ show, title, message, onConfirm, onCancel,  isLoading  }) {
+    if (!show) return null;
+
+    return (
+    <div className="fixed inset-0  bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="bg-red-100 p-3 rounded-full">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+          </div>
+
+          <p className="text-gray-600 mb-8 leading-relaxed">
+            {message}
+          </p>
+
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onCancel}
+              disabled={isLoading}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isLoading}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 }
