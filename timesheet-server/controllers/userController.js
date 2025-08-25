@@ -239,10 +239,11 @@ export const resetPassword = async (req, res) => {
     const { id } = payload;
 
 
-    // Optional: Check if the token is expired (e.g., 1 hour = 3600000 ms)
-    if (Date.now() - timestamp > 3600000) {
-      return res.status(400).json({ message: "Token expired" });
-    }
+    // Optional: Check if the token is expired (e.g., valid for 24 hours)
+    if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
+  return res.status(400).json({ message: "Token expired" });
+}
+
 
     const user = await User.findById(id);
     if (!user) {
