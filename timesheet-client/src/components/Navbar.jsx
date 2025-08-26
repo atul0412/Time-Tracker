@@ -30,7 +30,8 @@ export default function Navbar() {
       { href: '/user', label: 'All Users', icon: Users },
       { href: '/projects/create', label: 'Add Project', icon: FolderPlus },
       { href: '/AssignedProject', label: 'Assigned Project', icon: Clipboard },
-      { href: '/reports', label: 'View Reports', icon: FileText }
+      { href: '/reports', label: 'View Reports', icon: FileText },
+      { href: '/audit-logs', label: 'Audit Logs', icon: FileText }
     );
   }
 

@@ -6,6 +6,8 @@ import userRoutes from './routes/user.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import timesheetRoutes from './routes/timeSheet.routes.js';
 import assignProject from './routes/assignProject.route.js';
+import auditRoutes from './routes/auditRoutes.js';
+import auditLogger from "./middleware/auditLogger.js";
 
 dotenv.config(); 
 
@@ -14,11 +16,9 @@ const app = express();
 // Connect to MongoDB
 connectDB(); 
 
-// middlerware
-
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -27,14 +27,18 @@ app.use(cors({
   credentials: true
 }));
 
+// Apply audit logging middleware before routes
+app.use(auditLogger({
+  skipEndpoints: ['/health', '/api/audit'], // Skip these endpoints
+  requireAuth: false
+}));
 
-
-// define Routes
+// Define Routes
 app.use('/api/users', userRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/timesheets", timesheetRoutes);
 app.use('/api/assignProject', assignProject); 
-
+app.use('/api/audit', auditRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

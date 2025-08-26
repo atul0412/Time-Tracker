@@ -7,44 +7,6 @@ import { exportTimesheetToExcel } from '../../lib/exportToExcel'
 import { formatDateToReadable } from '../../lib/dateFormate'
 import toast from 'react-hot-toast'
 
-// DeleteConfirmationModal component
-function DeleteConfirmationModal({ show, title, message, onConfirm, onCancel, loading }) {
-    if (!show) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
-                    <Trash2 className="w-6 h-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{title}</h3>
-                <p className="text-gray-600 text-center mb-6">{message}</p>
-                <div className="flex justify-end space-x-4">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-                        disabled={loading}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        className={`px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        disabled={loading}
-                    >
-                        {loading && (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        )}
-                        {loading ? 'Deleting...' : 'Delete'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 export default function ReportPage() {
     const [viewMode, setViewMode] = useState('user')
     const [users, setUsers] = useState([])
@@ -217,7 +179,7 @@ export default function ReportPage() {
             toast.success('Timesheet entry deleted successfully!');
         } catch (error) {
             console.error('Failed to delete timesheet:', error);
-            toast.error('Failed to delete timesheet entry. Please try again later.');
+            toast.success('Failed to delete timesheet entry. Please try again later.');
         } finally {
             setDeleteConfirmation(prev => ({ ...prev, loading: false }));
         }
@@ -249,30 +211,31 @@ export default function ReportPage() {
         }
     };
 
-    const handleInputChange = (index, field, value) => {
-        // Define which fields are editable
-        const editableFields = ['Effort Hours', 'task', 'date'];
-        
-        // Only allow changes to editable fields
-        if (!editableFields.includes(field)) {
-            console.warn(`Attempted to edit non-editable field: ${field}`);
-            return;
-        }
+ const handleInputChange = (index, field, value) => {
+    // Define which fields are editable
+    const editableFields = ['Effort Hours', 'task', 'date'];
+    
+    // Only allow changes to editable fields
+    if (!editableFields.includes(field)) {
+        console.warn(`Attempted to edit non-editable field: ${field}`);
+        return;
+    }
 
-        setEditableTimesheets(prev => {
-            const newEditable = [...prev];
-            if (!newEditable[index]) return newEditable;
-            
-            newEditable[index] = {
-                ...newEditable[index],
-                data: {
-                    ...newEditable[index].data,
-                    [field]: value
-                }
-            };
-            return newEditable;
-        });
-    };
+    setEditableTimesheets(prev => {
+        const newEditable = [...prev];
+        if (!newEditable[index]) return newEditable;
+        
+        newEditable[index] = {
+            ...newEditable[index],
+            data: {
+                ...newEditable[index].data,
+                [field]: value
+            }
+        };
+        return newEditable;
+    });
+};
+
 
     const handleDateFilterChange = (filterType) => {
         setDateFilter(filterType)
@@ -812,10 +775,10 @@ export default function ReportPage() {
                                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border shadow-sm transition-colors font-medium ${
                                                 editMode 
                                                     ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
-                                                    : 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm'
+                                                    : ' bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm'
                                             }`}
                                         >
-                                            <Pencil className="w-4 h-4" />
+                                            <Pencil className="w-3 h-5" />
                                             {editMode ? 'Save' : 'Edit'}
                                         </button>
 
@@ -982,7 +945,6 @@ export default function ReportPage() {
                                                         const data = ts.data || {}
                                                         return (
                                                             <tr key={ts._id || index} className="hover:bg-gray-50">
-                                                                {/* DATE FIELD - EDITABLE */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
                                                                     {editMode ? (
                                                                         <input
@@ -997,8 +959,6 @@ export default function ReportPage() {
                                                                         </div>
                                                                     )}
                                                                 </td>
-
-                                                                {/* EFFORT HOURS FIELD - EDITABLE */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[80px]">
                                                                     {editMode ? (
                                                                         <input
@@ -1015,8 +975,6 @@ export default function ReportPage() {
                                                                         </span>
                                                                     )}
                                                                 </td>
-
-                                                                {/* TASK FIELD - EDITABLE */}
                                                                 <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 min-w-[200px] max-w-[300px]">
                                                                     {editMode ? (
                                                                         <textarea
@@ -1031,31 +989,45 @@ export default function ReportPage() {
                                                                         </div>
                                                                     )}
                                                                 </td>
-
-                                                                {/* DEVELOPER NAME FIELD - READ-ONLY */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[120px]">
-                                                                    <div className="flex items-center">
-                                                                        <div className="bg-purple-100 rounded-full p-1 mr-2 flex-shrink-0">
-                                                                            <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                                            </svg>
+                                                                    {editMode ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={data['Developer Name'] || data['Developer name'] || ''}
+                                                                            onChange={(e) => handleInputChange(index, 'Developer Name', e.target.value)}
+                                                                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="flex items-center">
+                                                                            <div className="bg-purple-100 rounded-full p-1 mr-2 flex-shrink-0">
+                                                                                <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                                </svg>
+                                                                            </div>
+                                                                            <span className="truncate">{data['Developer Name'] || data['Developer name']}</span>
                                                                         </div>
-                                                                        <span className="truncate">{data['Developer Name'] || data['Developer name']}</span>
-                                                                    </div>
+                                                                    )}
                                                                 </td>
-
-                                                                {/* TYPE FIELD - READ-ONLY */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 min-w-[100px]">
-                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                        data['Frontend/Backend'] === 'Frontend'
+                                                                    {editMode ? (
+                                                                        <select
+                                                                            value={data['Frontend/Backend'] || ''}
+                                                                            onChange={(e) => handleInputChange(index, 'Frontend/Backend', e.target.value)}
+                                                                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                                        >
+                                                                            <option value="">Select Type</option>
+                                                                            <option value="Frontend">Frontend</option>
+                                                                            <option value="Backend">Backend</option>
+                                                                        </select>
+                                                                    ) : (
+                                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${data['Frontend/Backend'] === 'Frontend'
                                                                             ? 'bg-green-100 text-green-800'
                                                                             : 'bg-orange-100 text-orange-800'
-                                                                    }`}>
-                                                                        {data['Frontend/Backend']}
-                                                                    </span>
+                                                                            }`}>
+                                                                            {data['Frontend/Backend']}
+                                                                        </span>
+                                                                    )}
                                                                 </td>
-
-                                                                {/* ACTIONS FIELD */}
                                                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-center">
                                                                     <button
                                                                         onClick={() => showDeleteConfirmation(ts._id)}
@@ -1125,6 +1097,8 @@ export default function ReportPage() {
             `}</style>
         </div>
     )
+}
+
 // DeleteConfirmationModal component
 function DeleteConfirmationModal({ show, title, message, onConfirm, onCancel,  isLoading  }) {
     if (!show) return null;
@@ -1176,5 +1150,4 @@ function DeleteConfirmationModal({ show, title, message, onConfirm, onCancel,  i
       </div>
     </div>
   );
-}
 }
