@@ -20,23 +20,23 @@ export const getAuditLogs = async (req, res) => {
 
     // Build filter object
     const filter = {};
-
+    
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
       filter.userId = userId;
     }
-
+    
     if (resource) {
       filter.resource = { $regex: resource, $options: 'i' };
     }
-
+    
     if (action) {
       filter.action = action;
     }
-
+    
     if (status) {
       filter.status = status;
     }
-
+    
     // Date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -68,7 +68,7 @@ export const getAuditLogs = async (req, res) => {
     };
 
     let auditLogs = await AuditLog.paginate(filter, options);
-
+    
     // CRITICAL FIX: Map populated data to flat structure for frontend
     if (auditLogs.docs) {
       auditLogs.docs = auditLogs.docs.map(log => ({
@@ -78,7 +78,7 @@ export const getAuditLogs = async (req, res) => {
         userEmail: log.userId?.email || log.userEmail || 'No Email'
       }));
     }
-
+    
     res.json({
       success: true,
       message: 'Audit logs retrieved successfully',
@@ -164,10 +164,10 @@ export const getAuditStats = async (req, res) => {
       ...dateFilter,
       status: 'FAILURE'
     })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .select('userEmail userName action resource message createdAt errorMessage') // UPDATED: Include userName
-      .lean();
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .select('userEmail userName action resource message createdAt errorMessage') // UPDATED: Include userName
+    .lean();
 
     // Total count
     const totalLogs = await AuditLog.countDocuments(dateFilter);
@@ -260,14 +260,14 @@ export const exportAuditLogs = async (req, res) => {
 
     // Build filter object
     const filter = {};
-
+    
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
       filter.userId = userId;
     }
     if (resource) filter.resource = resource;
     if (action) filter.action = action;
     if (status) filter.status = status;
-
+    
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
@@ -346,7 +346,7 @@ export const exportAuditLogs = async (req, res) => {
 export const cleanupAuditLogs = async (req, res) => {
   try {
     const { daysToKeep = 90 } = req.body;
-
+    
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - parseInt(daysToKeep));
 

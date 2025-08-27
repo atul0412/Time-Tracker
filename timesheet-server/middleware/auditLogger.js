@@ -49,7 +49,7 @@ const extractResourceId = (req) => {
 const generateAuditMessage = (action, resource, userEmail, userName, status, responseData, req) => {
   const resourceName = resource.charAt(0).toUpperCase() + resource.slice(1);
   const userIdentifier = userName ? `${userName} (${userEmail})` : userEmail;
-
+  
   // Handle failure cases
   if (status === 'FAILURE') {
     return `Failed to ${action.toLowerCase()} ${resourceName.toLowerCase()} by ${userIdentifier}`;
@@ -113,7 +113,7 @@ export const auditLogger = (options = {}) => {
     }
 
     const userInfo = extractUserInfo(req);
-
+    
     // Skip audit logging if no user info (for public endpoints)
     if (!userInfo && options.requireAuth !== false) {
       return next();
@@ -128,19 +128,19 @@ export const auditLogger = (options = {}) => {
     // Capture the original res.json and res.send functions
     const originalJson = res.json;
     const originalSend = res.send;
-
+    
     let responseData = null;
     let statusCode = null;
 
     // Override res.json to capture response
-    res.json = function (data) {
+    res.json = function(data) {
       responseData = data;
       statusCode = res.statusCode;
       return originalJson.call(this, data);
     };
 
     // Override res.send to capture response
-    res.send = function (data) {
+    res.send = function(data) {
       if (!responseData) {
         responseData = data;
         statusCode = res.statusCode;
