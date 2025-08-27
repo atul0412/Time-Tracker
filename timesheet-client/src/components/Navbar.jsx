@@ -22,7 +22,7 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Home', icon: FileText }
+    // { href: '/', label: 'Home', icon: FileText }
   ];
 
   if (user?.role === 'admin') {
@@ -37,11 +37,15 @@ export default function Navbar() {
 
   if (user?.role === 'project_manager') {
     navLinks.push(
+      { href: '/', label: 'Home', icon: FileText },
       { href: '/AssignedProject', label: 'Assigned Project', icon: Clipboard },
     );
   }
-
-
+  if (user?.role === 'user') {
+    navLinks.push(
+      { href: '/', label: 'Home', icon: FileText }
+    );
+  }
 
   // 🔒 Hide navbar on auth pages
   if (
@@ -85,18 +89,17 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActivePage(link.href)
-                      ? 'bg-purple-700 text-white shadow-lg'
-                      : 'text-purple-100 hover:bg-purple-800 hover:text-white'
-                  }`}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActivePage(link.href)
+                    ? 'bg-purple-700 text-white shadow-lg'
+                    : 'text-purple-100 hover:bg-purple-800 hover:text-white'
+                    }`}
                 >
                   <Icon size={16} />
                   <span>{link.label}</span>
                 </Link>
               );
             })}
-            
+
             {/* User Profile & Logout */}
             {user && (
               <div className="flex items-center space-x-3 ml-6 pl-6 border-l border-purple-700">
@@ -163,11 +166,10 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActivePage(link.href)
-                      ? 'bg-purple-700 text-white shadow-lg'
-                      : 'text-purple-100 hover:bg-purple-800 hover:text-white'
-                  }`}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActivePage(link.href)
+                    ? 'bg-purple-700 text-white shadow-lg'
+                    : 'text-purple-100 hover:bg-purple-800 hover:text-white'
+                    }`}
                   onClick={() => setIsOpen(false)}
                 >
                   <Icon size={18} />
