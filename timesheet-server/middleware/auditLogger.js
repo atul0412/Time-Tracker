@@ -89,14 +89,14 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                               requestData?.name ||  // Fallback to request data
                               requestData?.firstName ||
                               'New Employee';
-          return `New employee "${newUserName}" added successfully`;
+          return `New employee ${newUserName} added successfully`;
         
         case 'projects':
           const projectName = responseData?.project?.name || 
                              responseData?.name || 
                              requestData?.name ||
                              'New Project';
-          return `New project "${projectName}" created successfully`;
+          return `New project ${projectName} created successfully`;
         
         case 'timesheets':
           return `New timesheet created successfully`;
@@ -120,7 +120,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                             userName ||
                             'Admin';
           
-          return `Project "${assignedProjectName}" assigned to "${assignedUserName} by "${assignedBy}" successfully`;
+          return `${assignedUserName} is assigned to ${assignedProjectName} project  assigned By ${assignedBy} successfully`;
         
         default:
           return `${resource.charAt(0).toUpperCase() + resource.slice(1)} created successfully`;
@@ -137,14 +137,14 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                                  requestData?.name ||
                                  requestData?.firstName ||
                                  'Employee';
-          return `Employee "${updatedUserName}" information updated successfully`;
+          return `Employee ${updatedUserName} information updated successfully`;
         
         case 'projects':
           const updatedProjectName = responseData?.project?.name || 
                                     responseData?.name || 
                                     requestData?.name ||
                                     'Project';
-          return `Project "${updatedProjectName}" updated successfully`;
+          return `Project ${updatedProjectName} updated successfully`;
         
         case 'timesheets':
           return `Timesheet updated successfully`;
@@ -166,7 +166,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                            userName ||
                            'Admin';
           
-          return `Project assignment updated: "${updatedAssignedProjectName}" to "${updatedAssignedUserName}" by "${updatedBy}"`;
+          return `Project assignment updated: ${updatedAssignedProjectName} to ${updatedAssignedUserName} by ${updatedBy}`;
         
         default:
           return `${resource.charAt(0).toUpperCase() + resource.slice(1)} updated successfully`;
@@ -180,14 +180,14 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                                  responseData?.name || 
                                  requestData?.name ||
                                  'Employee';
-          return `Employee "${deletedUserName}" removed successfully`;
+          return `Employee ${deletedUserName} removed successfully`;
         
         case 'projects':
           const deletedProjectName = responseData?.project?.name || 
                                     responseData?.name || 
                                     requestData?.name ||
                                     'Project';
-          return `Project "${deletedProjectName}" deleted successfully`;
+          return `Project ${deletedProjectName} deleted successfully`;
         
         case 'timesheets':
           return `Timesheet deleted successfully`;
@@ -211,7 +211,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                               userName ||
                               'Admin';
           
-          return `Project assignment removed: "${removedAssignedProjectName}" from "${removedAssignedUserName}" by "${deassignedBy}"`;
+          return ` ${removedAssignedUserName} removed from  ${removedAssignedProjectName} project removed by ${deassignedBy}`;
         
         default:
           return `${resource.charAt(0).toUpperCase() + resource.slice(1)} deleted successfully`;
@@ -221,6 +221,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
       return `${action} performed on ${resource.toLowerCase()}`;
   }
 };
+
 
 export const auditLogger = (options = {}) => {
   return (req, res, next) => {

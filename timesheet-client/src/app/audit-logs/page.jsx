@@ -247,7 +247,7 @@ const AuditDashboard = () => {
                         onClick={handleRefresh}
                         className="flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-white border border-gray-200 rounded-lg sm:rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 shadow-sm text-sm sm:text-base"
                     >
-                        <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 ${(loading || statsLoading) ? 'animate-spin text-blue-600' : 'text-gray-600'}`} />
+                        <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 ${(loading || statsLoading) ? 'animate-spin text-purple-600' : 'text-gray-600'}`} />
                         <span className="font-medium text-gray-700">Refresh</span>
                     </button>
                 </div>
@@ -406,7 +406,7 @@ const AuditDashboard = () => {
                                     <div className="flex items-center gap-2 ml-auto">
                                         <button
                                             onClick={() => exportLogs('csv')}
-                                            className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-medium"
+                                            className="flex items-center px-3 py-1.5 bg-green-800 text-white rounded-md hover:bg-green-900 transition-colors text-xs font-medium"
                                         >
                                             <Download className="w-3 h-3 mr-1" />
                                             Export
