@@ -183,18 +183,37 @@ export const deleteProject = async (req, res) => {
   }
 
   try {
-    const deleted = await Project.findByIdAndDelete(req.params.id);
-    if (!deleted) {
+    // UPDATED: Find project first to get project details before deletion
+    const projectToDelete = await Project.findById(req.params.id);
+    if (!projectToDelete) {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    res.json({ message: "Project deleted successfully" });
+    // Store project details before deletion
+    const deletedProjectInfo = {
+      _id: projectToDelete._id,
+      name: projectToDelete.name,
+      description: projectToDelete.description,
+      startDate: projectToDelete.startDate,
+      endDate: projectToDelete.endDate,
+      status: projectToDelete.status
+    };
+
+    // Now delete the project
+    const deleted = await Project.findByIdAndDelete(req.params.id);
+
+    // UPDATED: Include deleted project info in response for audit logging
+    res.json({ 
+      message: "Project deleted successfully",
+      project: deletedProjectInfo // Include project info for audit logging
+    });
   } catch (err) {
     res
       .status(500)
       .json({ message: "Failed to delete project", error: err.message });
   }
 };
+
 
 // ✅ ENHANCED: Update project with automatic assignment/deassignment
 export const updateProject = async (req, res) => {

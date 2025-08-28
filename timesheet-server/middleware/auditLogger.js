@@ -38,6 +38,12 @@ const methodToAction = {
 // Extract resource type from URL
 const extractResourceFromUrl = (url) => {
   const segments = url.split('/').filter(Boolean);
+  
+  // Handle specific assignment endpoints
+  if (url.includes('/assignproject') || url.includes('/assign-project')) {
+    return 'assignproject';
+  }
+  
   if (segments.includes('api')) {
     const apiIndex = segments.indexOf('api');
     return segments[apiIndex + 1] || 'unknown';
@@ -48,17 +54,20 @@ const extractResourceFromUrl = (url) => {
 // Extract resource ID from URL or request body
 const extractResourceId = (req) => {
   if (req.params.id) return req.params.id;
+  if (req.params.assignmentId) return req.params.assignmentId;
   if (req.body && req.body._id) return req.body._id;
   if (req.body && req.body.id) return req.body.id;
+  if (req.body && req.body.projectId) return req.body.projectId;
+  if (req.body && req.body.userId) return req.body.userId;
   return null;
 };
 
 // UPDATED: Generate customized audit messages based on resource and action
-const generateAuditMessage = (action, resource, userEmail, userName, status, responseData) => {
+const generateAuditMessage = (action, resource, userEmail, userName, status, responseData, requestData = null) => {
   const userIdentifier = userName || 'Unknown User';
   
   if (status === 'FAILURE') {
-    return `Failed to ${action.toLowerCase()} ${resource.toLowerCase()} `;
+    return `Failed to ${action.toLowerCase()} ${resource.toLowerCase()}`;
   }
 
   switch (action) {
@@ -71,13 +80,48 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
       // Customize messages based on resource type
       switch (resource.toLowerCase()) {
         case 'users':
-          return `New employee added successfully`;
+        case 'register': // Handle both /users and /register endpoints
+          // Extract new user name from response data
+          const newUserName = responseData?.user?.name || 
+                              responseData?.user?.firstName || 
+                              responseData?.name || 
+                              responseData?.firstName ||
+                              requestData?.name ||  // Fallback to request data
+                              requestData?.firstName ||
+                              'New Employee';
+          return `New employee "${newUserName}" added successfully`;
+        
         case 'projects':
-          return `New project created successfully`;
+          const projectName = responseData?.project?.name || 
+                             responseData?.name || 
+                             requestData?.name ||
+                             'New Project';
+          return `New project "${projectName}" created successfully`;
+        
         case 'timesheets':
           return `New timesheet created successfully`;
+        
         case 'assignproject':
-          return `New project assignment created successfully`;
+          // UPDATED: Extract project name, assigned user name, and assignedBy
+          const assignedProjectName = responseData?.project?.name || 
+                                     responseData?.data?.project?.name ||
+                                     responseData?.assignment?.project?.name ||
+                                     requestData?.projectName ||
+                                     'Project';
+          
+          const assignedUserName = responseData?.user?.name || 
+                                  responseData?.data?.user?.name ||
+                                  responseData?.assignment?.user?.name ||
+                                  requestData?.userName ||
+                                  'User';
+          
+          const assignedBy = responseData?.assignedBy || 
+                            responseData?.data?.assignedBy ||
+                            userName ||
+                            'Admin';
+          
+          return `Project "${assignedProjectName}" assigned to "${assignedUserName} by "${assignedBy}" successfully`;
+        
         default:
           return `${resource.charAt(0).toUpperCase() + resource.slice(1)} created successfully`;
       }
@@ -86,34 +130,95 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
       // Customize update messages
       switch (resource.toLowerCase()) {
         case 'users':
-          return `Employee information updated successfully `;
+          const updatedUserName = responseData?.user?.name || 
+                                 responseData?.user?.firstName || 
+                                 responseData?.name || 
+                                 responseData?.firstName ||
+                                 requestData?.name ||
+                                 requestData?.firstName ||
+                                 'Employee';
+          return `Employee "${updatedUserName}" information updated successfully`;
+        
         case 'projects':
-          return `Project updated successfully `;
+          const updatedProjectName = responseData?.project?.name || 
+                                    responseData?.name || 
+                                    requestData?.name ||
+                                    'Project';
+          return `Project "${updatedProjectName}" updated successfully`;
+        
         case 'timesheets':
-          return `Timesheet updated successfully `;
+          return `Timesheet updated successfully`;
+        
         case 'assignproject':
-          return `Project assignment updated successfully `;
+          // UPDATED: Handle project assignment updates
+          const updatedAssignedProjectName = responseData?.project?.name || 
+                                           responseData?.data?.project?.name ||
+                                           requestData?.projectName ||
+                                           'Project';
+          
+          const updatedAssignedUserName = responseData?.user?.name || 
+                                        responseData?.data?.user?.name ||
+                                        requestData?.userName ||
+                                        'User';
+          
+          const updatedBy = responseData?.assignedBy || 
+                           responseData?.data?.assignedBy ||
+                           userName ||
+                           'Admin';
+          
+          return `Project assignment updated: "${updatedAssignedProjectName}" to "${updatedAssignedUserName}" by "${updatedBy}"`;
+        
         default:
-          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} updated successfully `;
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} updated successfully`;
       }
     
     case 'DELETE':
       // Customize delete messages
       switch (resource.toLowerCase()) {
         case 'users':
-          return `Employee removed successfully `;
+          const deletedUserName = responseData?.user?.name || 
+                                 responseData?.name || 
+                                 requestData?.name ||
+                                 'Employee';
+          return `Employee "${deletedUserName}" removed successfully`;
+        
         case 'projects':
-          return `Project deleted successfully `;
+          const deletedProjectName = responseData?.project?.name || 
+                                    responseData?.name || 
+                                    requestData?.name ||
+                                    'Project';
+          return `Project "${deletedProjectName}" deleted successfully`;
+        
         case 'timesheets':
-          return `Timesheet deleted successfully `;
+          return `Timesheet deleted successfully`;
+        
         case 'assignproject':
-          return `Project assignment removed successfully `;
+          // UPDATED: Handle project assignment removal
+          const removedAssignedProjectName = responseData?.project?.name || 
+                                           responseData?.data?.project?.name ||
+                                           responseData?.removedAssignment?.project?.name ||
+                                           requestData?.projectName ||
+                                           'Project';
+          
+          const removedAssignedUserName = responseData?.user?.name || 
+                                        responseData?.data?.user?.name ||
+                                        responseData?.removedAssignment?.user?.name ||
+                                        requestData?.userName ||
+                                        'User';
+          
+          const deassignedBy = responseData?.deassignedBy || 
+                              responseData?.data?.deassignedBy ||
+                              userName ||
+                              'Admin';
+          
+          return `Project assignment removed: "${removedAssignedProjectName}" from "${removedAssignedUserName}" by "${deassignedBy}"`;
+        
         default:
-          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} deleted successfully `;
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} deleted successfully`;
       }
     
     default:
-      return `${action} performed on ${resource.toLowerCase()} `;
+      return `${action} performed on ${resource.toLowerCase()}`;
   }
 };
 
@@ -185,6 +290,17 @@ export const auditLogger = (options = {}) => {
         let action = methodToAction[req.method];
         let resource = extractResourceFromUrl(req.originalUrl);
 
+        // FIXED: Handle specific endpoints
+        if (req.originalUrl.includes('/register')) {
+          action = 'CREATE';
+          resource = 'users';
+        }
+
+        // Handle assignment endpoints
+        if (req.originalUrl.includes('/assignproject') || req.originalUrl.includes('/assign-project')) {
+          resource = 'assignproject';
+        }
+
         // FIXED: Consistent resource naming for auth operations
         if (req.originalUrl.includes('/login')) {
           action = 'LOGIN';
@@ -222,7 +338,7 @@ export const auditLogger = (options = {}) => {
           resource: resource,
           resourceId: extractResourceId(req),
           method: req.method,
-          message: generateAuditMessage(action, resource, userInfo.userEmail, userInfo.userName, status, responseData),
+          message: generateAuditMessage(action, resource, userInfo.userEmail, userInfo.userName, status, responseData, req.body),
           ipAddress: req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
           userAgent: req.get('User-Agent'),
           sessionId: req.sessionID,

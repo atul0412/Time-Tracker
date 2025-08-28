@@ -27,19 +27,28 @@ export const registerUser = async (req, res) => {
     };
 
     const encryptedToken = encodeURIComponent(encrypt(payload));
-    // console.log(encryptedToken)
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
-
-    // const message = `Click this link to reset your password: ${resetUrl}`;
 
     await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
 
-    res.status(201).json({ message: 'User registered successfully', userId: user._id });
+    // UPDATED: Include user object in response for audit logging
+    res.status(201).json({ 
+      message: 'User registered successfully', 
+      userId: user._id,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Registration failed', error: err.message });
   }
 };
+
+
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -109,17 +118,34 @@ export const deleteUser = async (req, res) => {
       return res.status(403).json({ message: 'Access denied: Admins only' });
     }
 
-    const deletedUser = await User.findByIdAndDelete(id);
-    if (!deletedUser) {
+    // UPDATED: Find user first to get user details before deletion
+    const userToDelete = await User.findById(id);
+    if (!userToDelete) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ message: 'User deleted successfully' });
+    // Store user details before deletion
+    const deletedUserInfo = {
+      _id: userToDelete._id,
+      name: userToDelete.name,
+      email: userToDelete.email,
+      role: userToDelete.role
+    };
+
+    // Now delete the user
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    // UPDATED: Include deleted user info in response for audit logging
+    res.json({ 
+      message: 'User deleted successfully',
+      user: deletedUserInfo // Include user info for audit logging
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to delete user', error: err.message });
   }
 };
+
 // ✅ Update user details
 export const updateUser = async (req, res) => {
   try {

@@ -19,97 +19,77 @@ export const assignProjectToUser = async (req, res) => {
     }
 
     // Check for duplicate assignment
-    const existing = await AssignedProject.findOne({
-      user: userId,
-      project: projectId,
-    });
+    const existing = await AssignedProject.findOne({ user: userId, project: projectId });
     if (existing) {
       return res
         .status(400)
         .json({ message: "Project already assigned to this user" });
     }
 
-    // ✅ Fetch project details for validation and email
+    // Fetch project and user for validation and email
     const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
-    }
+    if (!project) return res.status(404).json({ message: "Project not found" });
 
-    // ✅ Fetch user details for email
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     // Project manager additional check: Only allow if manager of project
     if (req.user.role === "project_manager") {
-      // Check if current user is a manager of this project
-      const isManager = Array.isArray(project.projectManagers) && project.projectManagers.some(
-        manager =>
-          // Handle both object & string IDs for safety
-          (manager?.toString?.() || manager?._id?.toString?.() || manager?.id?.toString?.()) === req.user._id.toString()
-          ||
-          (typeof manager === 'object' && (manager._id === req.user._id || manager.id === req.user._id))
-      );
+      const isManager =
+        Array.isArray(project.projectManagers) &&
+        project.projectManagers.some(
+          manager =>
+            (manager?.toString?.() || manager?._id?.toString?.() || manager?.id?.toString?.()) === req.user._id.toString() ||
+            (typeof manager === "object" && (manager._id === req.user._id || manager.id === req.user._id))
+        );
       if (!isManager) {
         return res.status(403).json({ message: "Access denied: You are not a manager for this project." });
       }
     }
 
-    // ✅ Create assignment with populated data
+    // Create assignment
     const assignment = await AssignedProject.create({
       user: userId,
       project: projectId,
     });
 
-    // ✅ Populate the assignment for response
+    // Populate for response
     const populatedAssignment = await AssignedProject.findById(assignment._id)
-      .populate('user', 'name email')
-      .populate('project', 'name description');
+      .populate("user", "name email")
+      .populate("project", "name description");
 
-    // ✅ Send project assignment email
+    // Send assignment email
     try {
       await sendProjectAssignmentEmail(
-        user.email,                    // to
-        user.name,                     // userName  
-        project.name,                  // projectName
-        project.description,           // projectDescription
-        req.user.name || 'Project Manager' // assignedBy
+        user.email, 
+        user.name, 
+        project.name, 
+        project.description,
+        req.user.name || "Project Manager"
       );
       console.log(`✅ Project assignment email sent to ${user.email} for project: ${project.name}`);
     } catch (emailError) {
-      console.error('❌ Failed to send project assignment email:', emailError);
-      // Don't fail the assignment if email fails - log it instead
+      console.error("❌ Failed to send project assignment email:", emailError);
     }
 
+    // **RECOMMENDED RESPONSE FORMAT FOR AUDIT LOGGER**
     res.status(201).json({
       success: true,
       message: "Project assigned successfully and notification sent",
-      data: {
-        assignment: populatedAssignment,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email
-        },
-        project: {
-          id: project._id,
-          name: project.name,
-          description: project.description
-        },
-        assignedBy: req.user.name || 'Project Manager',
-        assignedAt: new Date()
-      },
+      project: { id: project._id, name: project.name, description: project.description },
+      user: { id: user._id, name: user.name, email: user.email },
+      assignedBy: req.user.name || "Project Manager",
+      assignment: populatedAssignment,
+      assignedAt: new Date()
     });
   } catch (err) {
     console.error("Assign Project Error:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to assign project", error: err.message });
+    res.status(500).json({ message: "Failed to assign project", error: err.message });
   }
 };
 
-// ✅ UPDATED: Deassign project from user with email notification
+
+// ✅ UPDATED: Deassign project from user with email notification and audit logging
 export const deassignProjectFromUser = async (req, res) => {
   if (req.user.role !== "admin" && req.user.role !== "project_manager") {
     return res.status(403).json({ message: "Access denied: Admins or project managers only" });
@@ -169,25 +149,35 @@ export const deassignProjectFromUser = async (req, res) => {
     // ✅ Delete the assignment after sending email
     await AssignedProject.findByIdAndDelete(assignmentId);
 
+    // UPDATED: Structure response for audit logger
     res.status(200).json({
       success: true,
       message: `Successfully removed ${userName} from project "${projectName}" and notification sent`,
-      data: {
-        removedAssignment: {
-          id: assignment._id,
-          user: {
-            id: assignment.user._id,
-            name: assignment.user.name,
-            email: assignment.user.email,
-          },
-          project: {
-            id: assignment.project._id,
-            name: assignment.project.name,
-            description: assignment.project.description,
-          },
-          deassignedBy: req.user.name || 'Project Manager',
-          removedAt: new Date(),
+      project: { 
+        id: assignment.project._id, 
+        name: assignment.project.name, 
+        description: assignment.project.description 
+      },
+      user: { 
+        id: assignment.user._id, 
+        name: assignment.user.name, 
+        email: assignment.user.email 
+      },
+      deassignedBy: req.user.name || 'Project Manager',
+      removedAssignment: {
+        id: assignment._id,
+        user: {
+          id: assignment.user._id,
+          name: assignment.user.name,
+          email: assignment.user.email,
         },
+        project: {
+          id: assignment.project._id,
+          name: assignment.project.name,
+          description: assignment.project.description,
+        },
+        deassignedBy: req.user.name || 'Project Manager',
+        removedAt: new Date(),
       },
     });
   } catch (error) {
@@ -216,7 +206,7 @@ export const deassignProjectFromUser = async (req, res) => {
   }
 };
 
-// ✅ UPDATED: Alternative deassign by userId and projectId with email notification
+// ✅ UPDATED: Alternative deassign by userId and projectId with email notification and audit logging
 export const deassignProjectByIds = async (req, res) => {
   if (req.user.role !== "admin" && req.user.role !== "project_manager") {
     return res.status(403).json({ message: "Access denied: Admins or project managers only" });
@@ -286,17 +276,27 @@ export const deassignProjectByIds = async (req, res) => {
       project: projectId,
     });
 
+    // UPDATED: Structure response for audit logger
     res.status(200).json({
       success: true,
       message: `Successfully removed ${userName} from project "${projectName}" and notification sent`,
-      data: {
-        removedAssignment: {
-          id: assignment._id,
-          user: assignment.user,
-          project: assignment.project,
-          deassignedBy: req.user.name || 'Project Manager',
-          removedAt: new Date(),
-        },
+      project: { 
+        id: assignment.project._id, 
+        name: assignment.project.name, 
+        description: assignment.project.description 
+      },
+      user: { 
+        id: assignment.user._id, 
+        name: assignment.user.name, 
+        email: assignment.user.email 
+      },
+      deassignedBy: req.user.name || 'Project Manager',
+      removedAssignment: {
+        id: assignment._id,
+        user: assignment.user,
+        project: assignment.project,
+        deassignedBy: req.user.name || 'Project Manager',
+        removedAt: new Date(),
       },
     });
   } catch (error) {
@@ -308,6 +308,7 @@ export const deassignProjectByIds = async (req, res) => {
     });
   }
 };
+
 
 // ✅ Get all assigned projects with populated user and project data
 export const getAllAssignedProjects = async (req, res) => {
