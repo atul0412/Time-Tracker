@@ -1,25 +1,33 @@
 import AuditLog from '../models/AuditLog.js';
 import jwt from 'jsonwebtoken';
 
-// Helper function to extract user info from token (UPDATED)
-const extractUserInfo = (req) => {
+// Helper function to extract user info (modified to exclude email from logs)
+const extractUserInfo = (req, resData = null) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       return {
         userId: decoded.userId,
-        userEmail: decoded.email,
-        userName: decoded.name || decoded.firstName || '' // Add userName from token
+        userEmail: decoded.email, // Keep for database storage but won't show in messages
+        userName: decoded.name || decoded.firstName || ''
+      };
+    }
+    
+    if (resData && resData.user) {
+      return {
+        userId: resData.user._id,
+        userEmail: resData.user.email, // Keep for database storage
+        userName: resData.user.name || resData.user.firstName || ''
       };
     }
   } catch (error) {
-    // Handle token errors silently for audit logging
+    // Handle token errors silently
   }
   return null;
 };
 
-// Map HTTP methods to actions (removed GET/VIEW)
+// Map HTTP methods to actions
 const methodToAction = {
   'POST': 'CREATE',
   'PUT': 'UPDATE',
@@ -45,101 +53,119 @@ const extractResourceId = (req) => {
   return null;
 };
 
-// Generate context-aware audit message (UPDATED to use userName when available)
-const generateAuditMessage = (action, resource, userEmail, userName, status, responseData, req) => {
-  const resourceName = resource.charAt(0).toUpperCase() + resource.slice(1);
-  const userIdentifier = userName ? `${userName} (${userEmail})` : userEmail;
+// UPDATED: Generate customized audit messages based on resource and action
+const generateAuditMessage = (action, resource, userEmail, userName, status, responseData) => {
+  const userIdentifier = userName || 'Unknown User';
   
-  // Handle failure cases
   if (status === 'FAILURE') {
-    return `Failed to ${action.toLowerCase()} ${resourceName.toLowerCase()} by ${userIdentifier}`;
+    return `Failed to ${action.toLowerCase()} ${resource.toLowerCase()} `;
   }
 
-  // Generate success messages based on action and response
   switch (action) {
-    case 'CREATE':
-      if (responseData?.message) {
-        return responseData.message;
-      }
-      if (responseData?.success) {
-        return `${resourceName} created successfully by ${userIdentifier}`;
-      }
-      return `${resourceName} created by ${userIdentifier}`;
-
-    case 'UPDATE':
-      if (responseData?.message) {
-        return responseData.message;
-      }
-      if (responseData?.success) {
-        return `${resourceName} updated successfully by ${userIdentifier}`;
-      }
-      return `${resourceName} updated by ${userIdentifier}`;
-
-    case 'DELETE':
-      if (responseData?.message) {
-        return responseData.message;
-      }
-      if (responseData?.success) {
-        return `${resourceName} deleted successfully by ${userIdentifier}`;
-      }
-      return `${resourceName} deleted by ${userIdentifier}`;
-
     case 'LOGIN':
-      if (responseData?.message) {
-        return responseData.message;
-      }
       return `User ${userIdentifier} logged in successfully`;
-
     case 'LOGOUT':
-      if (responseData?.message) {
-        return responseData.message;
-      }
       return `User ${userIdentifier} logged out successfully`;
-
-    default:
-      if (responseData?.message) {
-        return responseData.message;
+    
+    case 'CREATE':
+      // Customize messages based on resource type
+      switch (resource.toLowerCase()) {
+        case 'users':
+          return `New employee added successfully`;
+        case 'projects':
+          return `New project created successfully`;
+        case 'timesheets':
+          return `New timesheet created successfully`;
+        case 'assignproject':
+          return `New project assignment created successfully`;
+        default:
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} created successfully`;
       }
-      return `${action} performed on ${resourceName.toLowerCase()} by ${userIdentifier}`;
+    
+    case 'UPDATE':
+      // Customize update messages
+      switch (resource.toLowerCase()) {
+        case 'users':
+          return `Employee information updated successfully `;
+        case 'projects':
+          return `Project updated successfully `;
+        case 'timesheets':
+          return `Timesheet updated successfully `;
+        case 'assignproject':
+          return `Project assignment updated successfully `;
+        default:
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} updated successfully `;
+      }
+    
+    case 'DELETE':
+      // Customize delete messages
+      switch (resource.toLowerCase()) {
+        case 'users':
+          return `Employee removed successfully `;
+        case 'projects':
+          return `Project deleted successfully `;
+        case 'timesheets':
+          return `Timesheet deleted successfully `;
+        case 'assignproject':
+          return `Project assignment removed successfully `;
+        default:
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)} deleted successfully `;
+      }
+    
+    default:
+      return `${action} performed on ${resource.toLowerCase()} `;
   }
 };
 
 export const auditLogger = (options = {}) => {
-  return async (req, res, next) => {
-    // Skip certain endpoints if specified
-    const skipEndpoints = options.skipEndpoints || ['/health', '/ping'];
+  return (req, res, next) => {
+    // CRITICAL: Skip irrelevant requests that cause duplicates
+    const skipEndpoints = [
+      '/favicon.ico',
+      '/robots.txt',
+      '/sitemap.xml',
+      '/health',
+      '/ping',
+      '/apple-touch-icon',
+      '.css',
+      '.js',
+      '.png',
+      '.jpg',
+      '.ico'
+    ];
+    
+    // Skip if URL matches any skip patterns
     if (skipEndpoints.some(endpoint => req.originalUrl.includes(endpoint))) {
       return next();
     }
 
-    const userInfo = extractUserInfo(req);
-    
-    // Skip audit logging if no user info (for public endpoints)
-    if (!userInfo && options.requireAuth !== false) {
+    // Skip OPTIONS requests (CORS preflight)
+    if (req.method === 'OPTIONS') {
       return next();
     }
 
-    // Skip GET requests (VIEW actions) - only log CREATE, UPDATE, DELETE
-    const action = methodToAction[req.method];
-    if (!action) {
+    // CRITICAL: Prevent duplicate logging for same request
+    if (req.auditLogged) {
       return next();
     }
+    req.auditLogged = true;
 
-    // Capture the original res.json and res.send functions
+    // Debug: Log what requests are being processed
+    console.log(`Audit Logger: Processing ${req.method} ${req.originalUrl}`);
+
     const originalJson = res.json;
     const originalSend = res.send;
     
     let responseData = null;
     let statusCode = null;
+    let auditLogged = false; // Prevent multiple logs per response
 
-    // Override res.json to capture response
     res.json = function(data) {
       responseData = data;
       statusCode = res.statusCode;
       return originalJson.call(this, data);
     };
 
-    // Override res.send to capture response
     res.send = function(data) {
       if (!responseData) {
         responseData = data;
@@ -148,27 +174,55 @@ export const auditLogger = (options = {}) => {
       return originalSend.call(this, data);
     };
 
-    // Continue with the request
     next();
 
-    // Log audit trail after response is sent
     res.on('finish', async () => {
+      // Prevent multiple finish events from logging
+      if (auditLogged) return;
+      auditLogged = true;
+
       try {
-        const resource = extractResourceFromUrl(req.originalUrl);
-        const userEmail = userInfo?.userEmail || 'anonymous';
-        const userName = userInfo?.userName || ''; // Extract userName
+        let action = methodToAction[req.method];
+        let resource = extractResourceFromUrl(req.originalUrl);
+
+        // FIXED: Consistent resource naming for auth operations
+        if (req.originalUrl.includes('/login')) {
+          action = 'LOGIN';
+          resource = 'auth';
+        }
+        
+        if (req.originalUrl.includes('/logout')) {
+          action = 'LOGOUT';
+          resource = 'auth';
+        }
+
+        if (!action) return;
+
+        let userInfo = extractUserInfo(req, responseData);
+
+        // For login/logout, try to get user info from response
+        if (!userInfo && (action === 'LOGIN' || action === 'LOGOUT')) {
+          if (responseData && responseData.user) {
+            userInfo = {
+              userId: responseData.user._id,
+              userEmail: responseData.user.email,
+              userName: responseData.user.name || ''
+            };
+          }
+        }
+
+        userInfo = userInfo || {};
         const status = statusCode >= 400 ? 'FAILURE' : 'SUCCESS';
 
-        // UPDATED: Include userName in audit data
         const auditData = {
-          userId: userInfo?.userId || null,
-          userName: userName, // NEW: Include userName field
-          userEmail: userEmail,
+          userId: userInfo.userId || null,
+          userName: userInfo.userName || '',
+          userEmail: userInfo.userEmail || 'anonymous',
           action: action,
           resource: resource,
           resourceId: extractResourceId(req),
           method: req.method,
-          message: generateAuditMessage(action, resource, userEmail, userName, status, responseData, req),
+          message: generateAuditMessage(action, resource, userInfo.userEmail, userInfo.userName, status, responseData),
           ipAddress: req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
           userAgent: req.get('User-Agent'),
           sessionId: req.sessionID,
@@ -177,9 +231,9 @@ export const auditLogger = (options = {}) => {
         };
 
         await AuditLog.create(auditData);
+        console.log(`Audit Log Created: ${action} on ${resource} by ${userInfo.userName || 'Unknown User'}`);
       } catch (error) {
         console.error('Audit logging failed:', error);
-        // Don't let audit logging failures affect the main application
       }
     });
   };

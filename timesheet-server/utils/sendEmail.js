@@ -259,7 +259,7 @@ const getWelcomeEmailHtmlTemplate = (
   userName = "User",
   setupPasswordLink
 ) => getHtmlEmailTemplate({
-  headerBadge: "🎉 Welcome Aboard!",
+  headerBadge: "🎉 Welcome !",
   headerTitle: "Time-Tracker",
   headerDesc: "Professional Project Management & Time Tracking",
   greeting: `Hello ${userName}! 👋`,

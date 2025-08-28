@@ -149,17 +149,6 @@ const AuditDashboard = () => {
         };
     };
 
-    // const getActionIcon = (action) => {
-    //     const icons = {
-    //         CREATE: <Plus className="w-3 h-3 sm:w-4 sm:h-4" />,
-    //         UPDATE: <Edit className="w-3 h-3 sm:w-4 sm:h-4" />,
-    //         DELETE: <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />,
-    //         LOGIN: <LogIn className="w-3 h-3 sm:w-4 sm:h-4" />,
-    //         LOGOUT: <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-    //     };
-    //     return icons[action] || <Activity className="w-3 h-3 sm:w-4 sm:h-4" />;
-    // };
-
     const getActionStyle = (action) => {
         const styles = {
             CREATE: 'bg-green-50 text-green-700 border-green-200',
@@ -316,24 +305,16 @@ const AuditDashboard = () => {
                     <div className="border-b border-gray-200 overflow-x-auto">
                         <nav className="flex space-x-4 sm:space-x-8 px-3 sm:px-6 min-w-max">
                             <button
-                                className={`py-3 sm:py-4 px-1 sm:px-2 border-b-2 font-semibold text-sm transition-all duration-300 whitespace-nowrap ${'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    }`}
+                                className={`py-3 sm:py-4 px-1 sm:px-2 border-b-2 font-semibold text-sm transition-all duration-300 whitespace-nowrap ${
+                                    activeTab === 'logs'
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
                                 onClick={() => setActiveTab('logs')}
                             >
                                 <Activity className="w-4 h-4 inline mr-2" />
                                 Activity Logs ({auditLogs.totalDocs})
                             </button>
-                            {/* <button
-                className={`py-3 sm:py-4 px-1 sm:px-2 border-b-2 font-semibold text-sm transition-all duration-300 whitespace-nowrap ${
-                  activeTab === 'analytics'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveTab('analytics')}
-              >
-                <BarChart3 className="w-4 h-4 inline mr-2" />
-                Analytics
-              </button> */}
                         </nav>
                     </div>
 
@@ -391,7 +372,6 @@ const AuditDashboard = () => {
                                         <option value="UPDATE">Update</option>
                                         <option value="DELETE">Delete</option>
                                         <option value="LOGIN">Login</option>
-                                        <option value="LOGOUT">Logout</option>
                                     </select>
 
                                     {/* Status Filter - Compact */}
@@ -474,7 +454,6 @@ const AuditDashboard = () => {
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50">
                                                 <tr>
-                                                    {/* UPDATED: Combined Date & Time column */}
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                                                         Date & Time
                                                     </th>
@@ -487,11 +466,9 @@ const AuditDashboard = () => {
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                                                         Resource
                                                     </th>
+                                                    {/* UPDATED: Combined Message & IP Address column */}
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                                        Message
-                                                    </th>
-                                                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
-                                                        IP Address
+                                                        Message & IP
                                                     </th>
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                                                         Status
@@ -500,11 +477,9 @@ const AuditDashboard = () => {
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
                                                 {auditLogs.docs?.map((log, index) => {
-                                                    // FIXED: Get timestamp as object with date and time properties
                                                     const timestamp = formatTimestamp(log.createdAt);
                                                     return (
                                                         <tr key={log._id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
-                                                            {/* UPDATED: Combined Date & Time column */}
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                                                                 <div className="flex items-center">
                                                                     <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mr-1 sm:mr-2 lg:mr-3" />
@@ -514,7 +489,6 @@ const AuditDashboard = () => {
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            {/* UPDATED: User column to show both userName and userEmail */}
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
                                                                 <div className="flex items-center">
                                                                     <User className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mr-1 sm:mr-2 lg:mr-3" />
@@ -530,8 +504,7 @@ const AuditDashboard = () => {
                                                             </td>
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
                                                                 <div className={`inline-flex items-center px-1.5 sm:px-2 lg:px-3 py-1 rounded-full text-xs font-semibold border ${getActionStyle(log.action)}`}>
-                                                                    {/* {getActionIcon(log.action)} */}
-                                                                    <span className="ml-1 sm:ml-1 lg:ml-2">{log.action}</span>
+                                                                    <span>{log.action}</span>
                                                                 </div>
                                                             </td>
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
@@ -539,22 +512,24 @@ const AuditDashboard = () => {
                                                                     {log.resource}
                                                                 </span>
                                                             </td>
+                                                            {/* UPDATED: Combined Message & IP Address column */}
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 max-w-48 sm:max-w-xs">
                                                                 <div className="flex items-start">
                                                                     <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mr-1 sm:mr-2 lg:mr-3 mt-0.5 flex-shrink-0" />
-                                                                    <p className="text-xs sm:text-sm text-gray-900 truncate" title={log.message}>
-                                                                        {log.message}
-                                                                    </p>
+                                                                    <div className="flex flex-col">
+                                                                        <p className="text-xs sm:text-sm text-gray-900 truncate" title={log.message}>
+                                                                            {log.message}
+                                                                        </p>
+                                                                        <span className="text-xs text-gray-500 font-mono mt-1">
+                                                                            IP: {log.ipAddress || 'N/A'}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                            <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 font-mono">
-                                                                {log.ipAddress || 'N/A'}
                                                             </td>
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
                                                                 <span className={`inline-flex items-center px-1.5 sm:px-2 lg:px-3 py-1 text-xs font-bold rounded-full border-2 ${getStatusColor(log.status)}`}>
                                                                     {log.status}
                                                                 </span>
-
                                                             </td>
                                                         </tr>
                                                     );
