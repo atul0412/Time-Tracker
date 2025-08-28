@@ -18,34 +18,35 @@ router.use(protect);
  * @desc    Get audit logs with filtering and pagination
  * @access  Private (Admin/Manager)
  */
-router.get('/', adminOnly, getAuditLogs);
+router.get('/',protect, getAuditLogs);
 
 /**
  * @route   GET /api/audit/stats
  * @desc    Get audit log statistics
  * @access  Private (Admin/Manager)
  */
-router.get('/stats', adminOnly, getAuditStats);
+router.get('/stats',protect, getAuditStats);
 
 /**
  * @route   GET /api/audit/export
  * @desc    Export audit logs to CSV or JSON
  * @access  Private (Admin/Manager)
  */
-router.get('/export', adminOnly, exportAuditLogs);
+router.get('/export',protect, exportAuditLogs);
 
 /**
  * @route   GET /api/audit/:id
  * @desc    Get a specific audit log by ID
  * @access  Private (Admin/Manager)
  */
-router.get('/:id', adminOnly, getAuditLogById);
+router.get('/:id',protect, getAuditLogById);
+
 
 /**
  * @route   DELETE /api/audit/cleanup
  * @desc    Clean up old audit logs
  * @access  Private (Admin/Manager)
  */
-router.delete('/cleanup', adminOnly, cleanupAuditLogs);
+router.delete('/cleanup',protect, cleanupAuditLogs);
 
 export default router;
