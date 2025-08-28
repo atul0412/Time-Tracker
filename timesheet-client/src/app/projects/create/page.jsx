@@ -187,7 +187,7 @@ export default function CreateProject() {
   };
 
   return (
-    <div className=" bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className=" bg-gradient-to-br ">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">

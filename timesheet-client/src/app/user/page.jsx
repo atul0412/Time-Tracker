@@ -295,7 +295,7 @@ export default function AllUsersPage() {
   }
 
   return (
-    <div className=" bg-gradient-to-br from-purple-50 to-purple-50">
+    <div className=" bg-gradient-to-br">
       <div className="px-4 py-8 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">

@@ -22,23 +22,24 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    // { href: '/', label: 'Home', icon: FileText }
+    { href: '/', label: 'Home', icon: FileText }
   ];
 
   if (user?.role === 'admin') {
     navLinks.push(
-      { href: '/user', label: 'All Users', icon: Users },
+      { href: '/user', label: 'Users', icon: Users },
       { href: '/projects/create', label: 'Add Project', icon: FolderPlus },
-      { href: '/AssignedProject', label: 'Assigned Project', icon: Clipboard },
-      { href: '/reports', label: 'View Reports', icon: FileText },
-      { href: '/audit-logs', label: 'Audit Logs', icon: FileText }
+      { href: '/AssignedProject', label: 'Assignment', icon: Clipboard },
+      { href: '/reports', label: 'Reports', icon: FileText },
+      { href: '/audit-logs', label: 'Logs', icon: FileText }
     );
   }
 
   if (user?.role === 'project_manager') {
     navLinks.push(
-      { href: '/', label: 'Home', icon: FileText },
-      { href: '/AssignedProject', label: 'Assigned Project', icon: Clipboard },
+      // { href: '/', label: 'Home', icon: FileText },
+      { href: '/AssignedProject', label: 'Assignment', icon: Clipboard },
+      // { href: '/audit-logs', label: 'Logs', icon: FileText }
     );
   }
   if (user?.role === 'user') {
