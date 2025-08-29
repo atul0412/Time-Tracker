@@ -401,6 +401,7 @@ const AuditDashboard = () => {
                                         <option value="UPDATE">Update</option>
                                         <option value="DELETE">Delete</option>
                                         <option value="LOGIN">Login</option>
+                                        <option value="LOGOUT">Logout</option>
                                     </select>
 
 

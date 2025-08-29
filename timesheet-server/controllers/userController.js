@@ -92,6 +92,39 @@ export const loginUser = async (req, res) => {
 };
 
 
+// Add this to your existing authController.js file
+
+export const logoutUser = async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Your audit logger middleware will automatically capture this
+    // as a LOGOUT action because the URL includes '/logout'
+    
+    res.status(200).json({
+      success: true,
+      message: 'Logout successful',
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email
+      }
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Logout failed', 
+      error: error.message 
+    });
+  }
+};
+
+
+
 // Get all users (admin only)
 export const getAllUsers = async (req, res) => {
   try {

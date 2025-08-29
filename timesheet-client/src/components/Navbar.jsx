@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Menu, X, User, LogOut, FileText, Users, FolderPlus, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../lib/axios';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,13 +14,37 @@ export default function Navbar() {
   const pathname = usePathname();
   const { user, setUser } = useAuth();
 
-  const handleLogout = () => {
+
+const handleLogout = async () => {
+  try {
+    // Call backend logout endpoint first
+    const response = await api.post('users/logout');
+    
+    if (response.data.success) {
+      // Clear local storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Clear any state management
+      setUser(null);
+      
+      // Redirect to login page
+      router.push('/login');
+      
+      // Optional: Show success message
+      toast.success('Logged out successfully');
+    }
+  } catch (error) {
+    console.error('Logout failed:', error);
+    
+    // Even if API call fails, clear frontend data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    toast.success('Logout successful');
-    router.push('/login');
-  };
+   router.push('/login');
+  }
+};
+
 
   const navLinks = [
     { href: '/', label: 'Home', icon: FileText }

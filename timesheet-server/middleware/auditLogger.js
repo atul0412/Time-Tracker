@@ -72,9 +72,9 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
 
   switch (action) {
     case 'LOGIN':
-      return `User ${userIdentifier} logged in successfully`;
+      return `${userIdentifier} logged in successfully`;
     case 'LOGOUT':
-      return `User ${userIdentifier} logged out successfully`;
+      return `${userIdentifier} logged out successfully`;
     
     case 'CREATE':
       // Customize messages based on resource type
@@ -256,7 +256,7 @@ export const auditLogger = (options = {}) => {
     req.auditLogged = true;
 
     // Debug: Log what requests are being processed
-    console.log(`Audit Logger: Processing ${req.method} ${req.originalUrl}`);
+    // console.log(`Audit Logger: Processing ${req.method} ${req.originalUrl}`);
 
     const originalJson = res.json;
     const originalSend = res.send;
