@@ -25,6 +25,7 @@ import {
     X
 } from 'lucide-react';
 
+
 const AuditDashboard = () => {
     const [auditLogs, setAuditLogs] = useState({ docs: [], totalPages: 0, page: 1, totalDocs: 0 });
     const [stats, setStats] = useState(null);
@@ -35,7 +36,7 @@ const AuditDashboard = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
         page: 1,
-        limit: 20,
+        limit: 15,  // Changed from 20 to 15
         resource: '',
         action: '',
         status: '',
@@ -44,18 +45,22 @@ const AuditDashboard = () => {
         search: ''
     });
 
+
     // Fetch audit logs from backend
     const fetchAuditLogs = async () => {
         try {
             setLoading(true);
             setError(null);
 
+
             const cleanFilters = Object.fromEntries(
                 Object.entries(filters).filter(([_, value]) => value !== '' && value !== null)
             );
 
+
             const response = await api.get('/audit', { params: cleanFilters });
             console.log(response);
+
 
             if (response.data.success) {
                 setAuditLogs(response.data.data);
@@ -71,12 +76,14 @@ const AuditDashboard = () => {
         }
     };
 
+
     // Fetch statistics from backend
     const fetchStats = async () => {
         try {
             setStatsLoading(true);
             const response = await api.get('/audit/stats');
             console.log(response);
+
 
             if (response.data.success) {
                 setStats(response.data.data);
@@ -98,13 +105,16 @@ const AuditDashboard = () => {
         }
     };
 
+
     useEffect(() => {
         fetchAuditLogs();
     }, [filters]);
 
+
     useEffect(() => {
         fetchStats();
     }, []);
+
 
     const handleFilterChange = (field, value) => {
         setFilters(prev => ({
@@ -114,15 +124,17 @@ const AuditDashboard = () => {
         }));
     };
 
+
     const handleRefresh = () => {
         fetchAuditLogs();
         fetchStats();
     };
 
+
     const resetFilters = () => {
         setFilters({
             page: 1,
-            limit: 20,
+            limit: 15,  // Changed from 20 to 15
             resource: '',
             action: '',
             status: '',
@@ -133,11 +145,14 @@ const AuditDashboard = () => {
         setShowFilters(false);
     };
 
+
     const formatTimestamp = (timestamp) => {
         const dateString = formatDateToReadable(timestamp);
         const dateObj = new Date(timestamp);
 
+
         if (isNaN(dateObj.getTime())) return { date: '', time: '' };
+
 
         return {
             date: dateString, // Uses your existing formatDateToReadable function
@@ -148,6 +163,7 @@ const AuditDashboard = () => {
             })
         };
     };
+
 
     const getActionStyle = (action) => {
         const styles = {
@@ -160,6 +176,7 @@ const AuditDashboard = () => {
         return styles[action] || 'bg-gray-50 text-gray-700 border-gray-200';
     };
 
+
     const getStatusColor = (status) => {
         const colors = {
             SUCCESS: 'bg-green-100 text-green-800 border-green-300',
@@ -169,16 +186,19 @@ const AuditDashboard = () => {
         return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
     };
 
+
     const exportLogs = async (format = 'csv') => {
         try {
             const cleanFilters = Object.fromEntries(
                 Object.entries(filters).filter(([_, value]) => value !== '' && value !== null)
             );
 
+
             const response = await api.get('/audit/export', {
                 params: { ...cleanFilters, format },
                 responseType: 'blob'
             });
+
 
             const blob = new Blob([response.data]);
             const url = window.URL.createObjectURL(blob);
@@ -194,6 +214,7 @@ const AuditDashboard = () => {
             alert('Export failed. Please try again.');
         }
     };
+
 
     const StatCard = ({ title, value, icon, color = 'blue', loading = false }) => (
         <div className="bg-white rounded-lg sm:rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
@@ -213,6 +234,7 @@ const AuditDashboard = () => {
         </div>
     );
 
+
     const ErrorMessage = ({ message, onRetry }) => (
         <div className="bg-red-50 border-l-4 border-red-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -229,6 +251,7 @@ const AuditDashboard = () => {
             </div>
         </div>
     );
+
 
     return (
         <div className="bg-gradient-to-br p-3 sm:p-6">
@@ -252,6 +275,7 @@ const AuditDashboard = () => {
                     </button>
                 </div>
 
+
                 {/* Error Message */}
                 {error && (
                     <ErrorMessage
@@ -262,6 +286,7 @@ const AuditDashboard = () => {
                         }}
                     />
                 )}
+
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
@@ -299,6 +324,7 @@ const AuditDashboard = () => {
                     />
                 </div>
 
+
                 {/* Main Content */}
                 <div className="bg-white rounded-lg sm:rounded-xl border border-gray-100 shadow-lg overflow-hidden">
                     {/* Tabs */}
@@ -317,6 +343,7 @@ const AuditDashboard = () => {
                         </nav>
                     </div>
 
+
                     {/* Activity Logs Tab */}
                     {activeTab === 'logs' && (
                         <div className="p-2 sm:p-4 lg:p-6">
@@ -330,6 +357,7 @@ const AuditDashboard = () => {
                                     {showFilters ? <X className="w-3 h-3" /> : <Menu className="w-3 h-3" />}
                                 </button>
                             </div>
+
 
                             {/* Compact Filters - Single Row Layout */}
                             <div className={`mb-4 sm:mb-6 ${showFilters ? 'block' : 'hidden sm:block'}`}>
@@ -347,6 +375,7 @@ const AuditDashboard = () => {
                                         />
                                     </div>
 
+
                                     {/* Resource Filter - Compact */}
                                     <select
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[90px]"
@@ -359,6 +388,7 @@ const AuditDashboard = () => {
                                         <option value="timesheets">Timesheets</option>
                                         <option value="assignProject">Assignments</option>
                                     </select>
+
 
                                     {/* Action Filter - Compact */}
                                     <select
@@ -373,6 +403,7 @@ const AuditDashboard = () => {
                                         <option value="LOGIN">Login</option>
                                     </select>
 
+
                                     {/* Status Filter - Compact */}
                                     <select
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[70px]"
@@ -385,6 +416,7 @@ const AuditDashboard = () => {
                                         <option value="ERROR">Error</option>
                                     </select>
 
+
                                     {/* Date Filters - Compact */}
                                     <input
                                         type="date"
@@ -394,6 +426,7 @@ const AuditDashboard = () => {
                                         title="Start Date"
                                     />
 
+
                                     <input
                                         type="date"
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[110px]"
@@ -401,6 +434,7 @@ const AuditDashboard = () => {
                                         onChange={(e) => handleFilterChange('endDate', e.target.value)}
                                         title="End Date"
                                     />
+
 
                                     {/* Action Buttons - Compact */}
                                     <div className="flex items-center gap-2 ml-auto">
@@ -421,6 +455,7 @@ const AuditDashboard = () => {
                                     </div>
                                 </div>
                             </div>
+
 
                             {/* Logs Display - Always Table Format */}
                             {loading ? (
@@ -447,6 +482,7 @@ const AuditDashboard = () => {
                                             Swipe left to see all columns
                                         </p>
                                     </div>
+
 
                                     {/* Scrollable Table for All Screen Sizes */}
                                     <div className="overflow-x-auto">
@@ -512,11 +548,11 @@ const AuditDashboard = () => {
                                                                 </span>
                                                             </td>
                                                             {/* UPDATED: Combined Message & IP Address column with proper text wrapping */}
-                                                            <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 max-w-48 sm:max-w-xs">
+                                                            <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
                                                                 <div className="flex items-start">
                                                                     <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mr-1 sm:mr-2 lg:mr-3 mt-0.5 flex-shrink-0" />
                                                                     <div className="flex flex-col min-w-0 flex-1">
-                                                                        <p className="text-xs sm:text-sm text-gray-900 break-words overflow-wrap-anywhere" title={log.message}>
+                                                                        <p className="text-xs sm:text-sm text-gray-900 break-words overflow-wrap-anywhere leading-relaxed" title={log.message}>
                                                                             {log.message}
                                                                         </p>
                                                                         <span className="text-xs text-gray-500 font-mono mt-1 break-all">
@@ -525,6 +561,7 @@ const AuditDashboard = () => {
                                                                     </div>
                                                                 </div>
                                                             </td>
+
 
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
                                                                 <span className={`inline-flex items-center px-1.5 sm:px-2 lg:px-3 py-1 text-xs font-bold rounded-full border-2 ${getStatusColor(log.status)}`}>
@@ -539,6 +576,7 @@ const AuditDashboard = () => {
                                     </div>
                                 </div>
                             )}
+
 
                             {/* Compact Pagination */}
                             {auditLogs.totalPages > 1 && (
@@ -576,5 +614,6 @@ const AuditDashboard = () => {
         </div>
     );
 };
+
 
 export default AuditDashboard;

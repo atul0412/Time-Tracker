@@ -67,7 +67,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
   const userIdentifier = userName || 'Unknown User';
   
   if (status === 'FAILURE') {
-    return `Failed to ${action.toLowerCase()} ${resource.toLowerCase()}`;
+    return `Failed to ${action.toLowerCase()} ${resource.toLowerCase()} by ${userIdentifier}`;
   }
 
   switch (action) {
@@ -120,7 +120,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                             userName ||
                             'Admin';
           
-          return `${assignedUserName} is assigned to ${assignedProjectName} project  assigned By ${assignedBy} successfully`;
+          return `${assignedUserName} is assigned to ${assignedProjectName} project assigned by ${assignedBy} successfully`;
         
         default:
           return `${resource.charAt(0).toUpperCase() + resource.slice(1)} created successfully`;
@@ -211,7 +211,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
                               userName ||
                               'Admin';
           
-          return ` ${removedAssignedUserName} removed from  ${removedAssignedProjectName} project removed by ${deassignedBy}`;
+          return `${removedAssignedUserName} is removed from ${removedAssignedProjectName} project by ${deassignedBy}`;
         
         default:
           return `${resource.charAt(0).toUpperCase() + resource.slice(1)} deleted successfully`;
@@ -221,7 +221,6 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
       return `${action} performed on ${resource.toLowerCase()}`;
   }
 };
-
 
 export const auditLogger = (options = {}) => {
   return (req, res, next) => {
@@ -315,7 +314,19 @@ export const auditLogger = (options = {}) => {
 
         if (!action) return;
 
+        // UPDATED: Enhanced user info extraction with fallback
         let userInfo = extractUserInfo(req, responseData);
+
+        // CRITICAL: Fallback to req.user if user info extraction failed
+        if (!userInfo || !userInfo.userName) {
+          if (req.user) {
+            userInfo = {
+              userId: req.user._id || req.user.id,
+              userEmail: req.user.email || 'anonymous',
+              userName: req.user.name || req.user.firstName || 'Unknown User'
+            };
+          }
+        }
 
         // For login/logout, try to get user info from response
         if (!userInfo && (action === 'LOGIN' || action === 'LOGOUT')) {
