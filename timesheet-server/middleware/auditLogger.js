@@ -70,7 +70,7 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
     return `Failed to ${action.toLowerCase()} ${resource.toLowerCase()} by ${userIdentifier}`;
   }
 
-  switch (action) {
+ switch (action) {
     case 'LOGIN':
       return `${userIdentifier} logged in successfully`;
     case 'LOGOUT':
@@ -99,7 +99,14 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
           return `New project ${projectName} created successfully`;
         
         case 'timesheets':
-          return `New timesheet created successfully`;
+          // UPDATED: Show who created the timesheet
+          const timesheetCreatedBy = responseData?.user?.name || 
+                                   responseData?.user?.firstName || 
+                                   responseData?.createdBy ||
+                                   requestData?.userName ||
+                                   userName ||
+                                   'User';
+          return `${timesheetCreatedBy} created a new timesheet successfully`;
         
         case 'assignproject':
           // UPDATED: Extract project name, assigned user name, and assignedBy
@@ -147,7 +154,14 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
           return `Project ${updatedProjectName} updated successfully`;
         
         case 'timesheets':
-          return `Timesheet updated successfully`;
+          // UPDATED: Show who updated the timesheet
+          const timesheetUpdatedBy = responseData?.user?.name || 
+                                   responseData?.user?.firstName || 
+                                   responseData?.updatedBy ||
+                                   requestData?.userName ||
+                                   userName ||
+                                   'User';
+          return `${timesheetUpdatedBy} updated their timesheet successfully`;
         
         case 'assignproject':
           // UPDATED: Handle project assignment updates
@@ -190,7 +204,14 @@ const generateAuditMessage = (action, resource, userEmail, userName, status, res
           return `Project ${deletedProjectName} deleted successfully`;
         
         case 'timesheets':
-          return `Timesheet deleted successfully`;
+          // UPDATED: Show who deleted the timesheet
+          const timesheetDeletedBy = responseData?.user?.name || 
+                                   responseData?.user?.firstName || 
+                                   responseData?.deletedBy ||
+                                   requestData?.userName ||
+                                   userName ||
+                                   'User';
+          return `${timesheetDeletedBy} deleted their timesheet successfully`;
         
         case 'assignproject':
           // UPDATED: Handle project assignment removal
@@ -254,9 +275,6 @@ export const auditLogger = (options = {}) => {
       return next();
     }
     req.auditLogged = true;
-
-    // Debug: Log what requests are being processed
-    // console.log(`Audit Logger: Processing ${req.method} ${req.originalUrl}`);
 
     const originalJson = res.json;
     const originalSend = res.send;
@@ -351,7 +369,7 @@ export const auditLogger = (options = {}) => {
           resourceId: extractResourceId(req),
           method: req.method,
           message: generateAuditMessage(action, resource, userInfo.userEmail, userInfo.userName, status, responseData, req.body),
-          ipAddress: req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
+          // IP ADDRESS REMOVED AS REQUESTED
           userAgent: req.get('User-Agent'),
           sessionId: req.sessionID,
           status: status,

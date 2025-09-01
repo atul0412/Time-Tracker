@@ -64,14 +64,10 @@ const handleLogout = async () => {
     navLinks.push(
       // { href: '/', label: 'Home', icon: FileText },
       { href: '/AssignedProject', label: 'Assignment', icon: Clipboard },
-      // { href: '/audit-logs', label: 'Logs', icon: FileText }
+      { href: '/audit-logs', label: 'Logs', icon: FileText }
     );
   }
-  if (user?.role === 'user') {
-    navLinks.push(
-      { href: '/', label: 'Home', icon: FileText }
-    );
-  }
+ 
 
   // 🔒 Hide navbar on auth pages
   if (
