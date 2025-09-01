@@ -1,14 +1,18 @@
+
 import AuditLog from '../models/AuditLog.js';
+import Project from '../models/project.js';
+import AssignedProject from '../models/assignedProject.js';
 import mongoose from 'mongoose';
 
 /**
- * Get audit logs with filtering and pagination
+ * Get audit logs with role-based filtering and pagination
  */
 export const getAuditLogs = async (req, res) => {
   try {
+    const startTime = Date.now();
     const {
       page = 1,
-      limit = 50,
+      limit = 15,
       userId,
       resource,
       action,
@@ -18,42 +22,127 @@ export const getAuditLogs = async (req, res) => {
       search
     } = req.query;
 
-    // Build filter object
-    const filter = {};
-    
+    let baseFilter = {};
+    let allowedUserIds = [];
+    let allowedProjectIds = [];
+
+    // ROLE-BASED FILTERING
+    if (req.user.role === 'admin') {
+      // Admin can see all logs - no base filtering needed
+    } else if (req.user.role === 'project_manager') {
+      try {
+        // Get projects managed by this project manager
+        const managedProjects = await Project.find({
+          projectManagers: req.user._id
+        }).select('_id');
+        
+        allowedProjectIds = managedProjects.map(p => p._id.toString());
+        
+        // Get users assigned to these projects
+        const assignedUsers = await AssignedProject.find({
+          project: { $in: allowedProjectIds }
+        }).populate('user').select('user');
+        
+        allowedUserIds = assignedUsers.map(a => a.user._id.toString());
+        allowedUserIds.push(req.user._id.toString()); // Include project manager
+        
+        // **FIXED: More comprehensive base filter**
+        baseFilter = {
+          $or: [
+            // 1. Project-related actions
+            {
+              resource: 'projects',
+              resourceId: { $in: allowedProjectIds }
+            },
+            // 2. ALL assignment actions
+            {
+              resource: 'assignproject'
+            },
+            // 3. All actions by allowed users (this catches login/logout)
+            {
+              userId: { $in: allowedUserIds }
+            }
+          ]
+        };
+        
+      } catch (error) {
+        console.error('Error building project manager filter:', error);
+        baseFilter = { userId: req.user._id };
+        allowedUserIds = [req.user._id.toString()];
+      }
+    } else {
+      // Regular users can only see their own logs
+      baseFilter = { userId: req.user._id };
+      allowedUserIds = [req.user._id.toString()];
+    }
+
+    // **BUILD FINAL FILTER BY ADDING CONDITIONS TO BASE FILTER**
+    let finalFilter = { ...baseFilter };
+    const additionalConditions = [];
+
+    // User ID filter
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-      filter.userId = userId;
+      if (req.user.role === 'admin') {
+        additionalConditions.push({ userId: userId });
+      } else if (allowedUserIds.includes(userId)) {
+        additionalConditions.push({ userId: userId });
+      }
     }
-    
+
+    // Resource filter - **FIXED: Direct match instead of regex for better performance**
     if (resource) {
-      filter.resource = { $regex: resource, $options: 'i' };
+      additionalConditions.push({ resource: resource });
     }
     
+    // Action filter
     if (action) {
-      filter.action = action;
+      additionalConditions.push({ action: action });
     }
     
+    // Status filter
     if (status) {
-      filter.status = status;
+      additionalConditions.push({ status: status });
     }
     
     // Date range filter
     if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      const dateFilter = {};
+      if (startDate) dateFilter.$gte = new Date(startDate);
+      if (endDate) dateFilter.$lte = new Date(endDate);
+      additionalConditions.push({ createdAt: dateFilter });
     }
 
-    // UPDATED: Search across multiple fields including userName
+    // Search filter
     if (search) {
-      filter.$or = [
-        { userEmail: { $regex: search, $options: 'i' } },
-        { userName: { $regex: search, $options: 'i' } }, // NEW: Search by userName
-        { message: { $regex: search, $options: 'i' } },
-        { resource: { $regex: search, $options: 'i' } },
-        { errorMessage: { $regex: search, $options: 'i' } }
-      ];
+      additionalConditions.push({
+        $or: [
+          { userEmail: { $regex: search, $options: 'i' } },
+          { userName: { $regex: search, $options: 'i' } },
+          { message: { $regex: search, $options: 'i' } },
+          { resource: { $regex: search, $options: 'i' } },
+          { errorMessage: { $regex: search, $options: 'i' } }
+        ]
+      });
     }
+
+    // **COMBINE BASE FILTER WITH ADDITIONAL CONDITIONS**
+    if (additionalConditions.length > 0) {
+      if (Object.keys(baseFilter).length > 0) {
+        finalFilter = {
+          $and: [
+            baseFilter,
+            ...additionalConditions
+          ]
+        };
+      } else {
+        // For admin with no base filter
+        finalFilter = additionalConditions.length === 1 ? 
+          additionalConditions[0] : 
+          { $and: additionalConditions };
+      }
+    }
+
+    // console.log(`🔍 Final Filter:`, JSON.stringify(finalFilter, null, 2));
 
     const options = {
       page: parseInt(page),
@@ -61,19 +150,39 @@ export const getAuditLogs = async (req, res) => {
       sort: { createdAt: -1 },
       populate: {
         path: 'userId',
-        select: 'name email role', // Make sure your User schema has 'name' and 'email' fields
+        select: 'name email role',
         strictPopulate: false
       },
       lean: true
     };
 
-    let auditLogs = await AuditLog.paginate(filter, options);
+    let auditLogs = await AuditLog.paginate(finalFilter, options);
+    // console.log('hvilkvjvighjvbyiujnh', auditLogs)
+    const queryTime = Date.now() - startTime;
+    // console.log(`⏱️ Audit query completed in ${queryTime}ms - Records: ${auditLogs.totalDocs}`);
     
-    // CRITICAL FIX: Map populated data to flat structure for frontend
+    // **Enhanced Debug for Project Managers**
+    if (req.user.role === 'project_manager' && process.env.NODE_ENV === 'development') {
+      const authLogsTest = await AuditLog.countDocuments({
+        resource: 'auth',
+        userId: { $in: allowedUserIds }
+
+
+        
+      });
+      const loginLogsTest = await AuditLog.countDocuments({
+        resource: 'auth',
+        action: 'LOGIN',
+        _id: { $in: allowedUserIds }
+      });
+      console.log(`🔐 Debug -  Login logs: ${loginLogsTest}`);
+      // console.log(`👥 Allowed user IDs: ${allowedUserIds}`);
+    }
+    
+    // Map populated data
     if (auditLogs.docs) {
       auditLogs.docs = auditLogs.docs.map(log => ({
         ...log,
-        // Use populated data if available, otherwise fall back to stored values
         userName: log.userId?.name || log.userName || 'Unknown User',
         userEmail: log.userId?.email || log.userEmail || 'No Email'
       }));
@@ -81,8 +190,16 @@ export const getAuditLogs = async (req, res) => {
     
     res.json({
       success: true,
+      atul:finalFilter,
       message: 'Audit logs retrieved successfully',
-      data: auditLogs
+      // data: auditLogs,
+      userRole: req.user.role,
+      queryTime: queryTime,
+      debugInfo: process.env.NODE_ENV === 'development' ? {
+        filterUsed: finalFilter,
+        totalRecords: auditLogs.totalDocs,
+        allowedUsers: allowedUserIds.length
+      } : undefined
     });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
@@ -94,24 +211,83 @@ export const getAuditLogs = async (req, res) => {
   }
 };
 
+
 /**
- * Get audit log statistics
+ * Get audit log statistics with role-based filtering
  */
 export const getAuditStats = async (req, res) => {
   try {
+    const startTime = Date.now();
     const { startDate, endDate } = req.query;
 
-    // Build date filter
-    const dateFilter = {};
+    // Build base date filter
+    let baseFilter = {};
     if (startDate || endDate) {
-      dateFilter.createdAt = {};
-      if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+      baseFilter.createdAt = {};
+      if (startDate) baseFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) baseFilter.createdAt.$lte = new Date(endDate);
     }
 
-    // Action statistics
+    // Apply role-based filtering to stats
+    let matchQuery = { ...baseFilter };
+    
+    if (req.user.role === 'admin') {
+      // Admin sees all stats - no additional filtering
+    } else if (req.user.role === 'project_manager') {
+      try {
+        const managedProjects = await Project.find({
+          projectManagers: req.user._id
+        }).select('_id');
+        
+        const projectIds = managedProjects.map(p => p._id.toString());
+        const assignedUsers = await AssignedProject.find({
+          project: { $in: projectIds }
+        }).populate('user').select('user');
+        
+        const userIds = assignedUsers.map(a => a.user._id.toString());
+        userIds.push(req.user._id.toString());
+        
+        matchQuery = {
+          ...baseFilter,
+          $or: [
+            { resource: 'projects', resourceId: { $in: projectIds } },
+            { resource: 'assignproject' },
+            { resource: 'assignments', $or: [
+              { resourceId: { $in: projectIds } },
+              { 'metadata.projectId': { $in: projectIds } }
+            ]},
+            { resource: 'timesheets', _id: { $in: userIds } },
+            { resource: 'auth', action: { $in: ['LOGIN', 'LOGOUT'] }, _id: { $in: userIds } },
+            { resource: 'users', $or: [
+              { _id: { $in: userIds } },
+              { resourceId: { $in: userIds } }
+            ]},
+            { _id: req.user._id }
+          ]
+        };
+            } catch (error) {
+        console.error('Error building project manager stats filter:', error);
+        matchQuery = { ...baseFilter, _id: req.user._id };
+            }
+    } else {
+      matchQuery = { ...baseFilter, userId: req.user._id };
+    }
+
+    // Rest of the stats logic remains the same...
+    const totalLogs = await AuditLog.countDocuments(matchQuery);
+    const successCount = await AuditLog.countDocuments({...matchQuery, status: 'SUCCESS'});
+    const failureCount = await AuditLog.countDocuments({...matchQuery, status: 'FAILURE'});
+    const errorCount = await AuditLog.countDocuments({...matchQuery, status: 'ERROR'});
+
+    const uniqueUsersAgg = await AuditLog.aggregate([
+      { $match: matchQuery },
+      { $group: { _id: "$userId" } },
+      { $count: "uniqueUsers" }
+    ]);
+    const uniqueUsers = uniqueUsersAgg.length > 0 ? uniqueUsersAgg[0].uniqueUsers : 0;
+
     const actionStats = await AuditLog.aggregate([
-      { $match: dateFilter },
+      { $match: matchQuery },
       {
         $group: {
           _id: '$action',
@@ -121,9 +297,8 @@ export const getAuditStats = async (req, res) => {
       { $sort: { count: -1 } }
     ]);
 
-    // Resource statistics
     const resourceStats = await AuditLog.aggregate([
-      { $match: dateFilter },
+      { $match: matchQuery },
       {
         $group: {
           _id: '$resource',
@@ -133,24 +308,18 @@ export const getAuditStats = async (req, res) => {
       { $sort: { count: -1 } }
     ]);
 
-    // Status statistics
-    const statusStats = await AuditLog.aggregate([
-      { $match: dateFilter },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    const statusStats = [
+      { _id: 'SUCCESS', count: successCount },
+      { _id: 'FAILURE', count: failureCount },
+      { _id: 'ERROR', count: errorCount }
+    ].filter(stat => stat.count > 0);
 
-    // UPDATED: Top users by activity - now includes userName
     const topUsers = await AuditLog.aggregate([
-      { $match: dateFilter },
+      { $match: matchQuery },
       {
         $group: {
           _id: '$userEmail',
-          userName: { $first: '$userName' }, // NEW: Include userName in grouping
+          userName: { $first: '$userName' },
           count: { $sum: 1 },
           lastActivity: { $max: '$createdAt' }
         }
@@ -159,18 +328,17 @@ export const getAuditStats = async (req, res) => {
       { $limit: 10 }
     ]);
 
-    // UPDATED: Recent failed attempts - include userName
     const recentFailures = await AuditLog.find({
-      ...dateFilter,
+      ...matchQuery,
       status: 'FAILURE'
     })
     .sort({ createdAt: -1 })
     .limit(20)
-    .select('userEmail userName action resource message createdAt errorMessage') // UPDATED: Include userName
+    .select('userEmail userName action resource message createdAt errorMessage')
     .lean();
 
-    // Total count
-    const totalLogs = await AuditLog.countDocuments(dateFilter);
+    const queryTime = Date.now() - startTime;
+    // console.log(`📊 Stats query completed in ${queryTime}ms`);
 
     res.json({
       success: true,
@@ -178,13 +346,18 @@ export const getAuditStats = async (req, res) => {
       data: {
         summary: {
           totalLogs,
+          successCount,
+          failureCount,
+          errorCount,
+          uniqueUsers,
           actionStats,
           resourceStats,
           statusStats
         },
         topUsers,
         recentFailures
-      }
+      },
+      queryTime: queryTime
     });
   } catch (error) {
     console.error('Error generating audit statistics:', error);
@@ -196,8 +369,9 @@ export const getAuditStats = async (req, res) => {
   }
 };
 
+
 /**
- * Get audit log by ID
+ * Get audit log by ID (with role-based access)
  */
 export const getAuditLogById = async (req, res) => {
   try {
@@ -210,6 +384,7 @@ export const getAuditLogById = async (req, res) => {
       });
     }
 
+    // Find single audit log
     let auditLog = await AuditLog.findById(id)
       .populate('userId', 'name email role')
       .lean();
@@ -221,7 +396,49 @@ export const getAuditLogById = async (req, res) => {
       });
     }
 
-    // ADDED: Map populated data for single log too
+    // Role-based access control
+    if (req.user.role !== 'admin') {
+      if (req.user.role === 'project_manager') {
+        // Check if project manager has access to this log
+        const managedProjects = await Project.find({
+          projectManagers: req.user._id
+        }).select('_id');
+        
+        const projectIds = managedProjects.map(p => p._id.toString());
+        const assignedUsers = await AssignedProject.find({
+          project: { $in: projectIds }
+        }).populate('user').select('user');
+        
+        const userIds = assignedUsers.map(a => a.user._id.toString());
+        userIds.push(req.user._id.toString());
+
+        // Enhanced access check for project managers - including all assignments
+        const hasAccess = (
+          (auditLog.resource === 'projects' && projectIds.includes(auditLog.resourceId)) ||
+          (auditLog.resource === 'assignproject') || // Allow all assignment logs
+          (auditLog.resource === 'timesheets' && userIds.includes(auditLog.userId?.toString())) ||
+          (auditLog.resource === 'auth' && ['LOGIN', 'LOGOUT'].includes(auditLog.action) && userIds.includes(auditLog.userId?.toString())) ||
+          (auditLog.resource === 'users' && userIds.includes(auditLog.userId?.toString()))
+        );
+
+        if (!hasAccess) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied to this audit log'
+          });
+        }
+      } else {
+        // Regular users can only access their own logs
+        if (auditLog.userId?.toString() !== req.user._id.toString()) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied to this audit log'
+          });
+        }
+      }
+    }
+
+    // Map populated data for single log
     auditLog = {
       ...auditLog,
       userName: auditLog.userId?.name || auditLog.userName || 'Unknown User',
@@ -244,7 +461,7 @@ export const getAuditLogById = async (req, res) => {
 };
 
 /**
- * Export audit logs to CSV or JSON
+ * Export audit logs to CSV or JSON (with role-based filtering)
  */
 export const exportAuditLogs = async (req, res) => {
   try {
@@ -258,10 +475,44 @@ export const exportAuditLogs = async (req, res) => {
       format = 'csv'
     } = req.query;
 
-    // Build filter object
-    const filter = {};
-    
-    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    // Build filter object with role-based filtering
+    let filter = {};
+
+    // Apply role-based filtering (same logic as getAuditLogs)
+    if (req.user.role === 'admin') {
+      // Admin can export all logs
+    } else if (req.user.role === 'project_manager') {
+      try {
+        const managedProjects = await Project.find({
+          projectManagers: req.user._id
+        }).select('_id');
+        
+        const projectIds = managedProjects.map(p => p._id.toString());
+        const assignedUsers = await AssignedProject.find({
+          project: { $in: projectIds }
+        }).populate('user').select('user');
+        
+        const userIds = assignedUsers.map(a => a.user._id.toString());
+        userIds.push(req.user._id.toString());
+        
+        filter = {
+          $or: [
+            { resource: 'projects', resourceId: { $in: projectIds } },
+            { resource: 'assignproject' }, // Include all assignment activities
+            { resource: 'timesheets', userId: { $in: userIds } },
+            { resource: 'auth', action: { $in: ['LOGIN', 'LOGOUT'] }, userId: { $in: userIds } },
+            { resource: 'users', userId: { $in: userIds } }
+          ]
+        };
+      } catch (error) {
+        filter = { userId: req.user._id };
+      }
+    } else {
+      filter = { userId: req.user._id };
+    }
+
+    // Apply additional filters
+    if (userId && mongoose.Types.ObjectId.isValid(userId) && req.user.role === 'admin') {
       filter.userId = userId;
     }
     if (resource) filter.resource = resource;
@@ -280,7 +531,7 @@ export const exportAuditLogs = async (req, res) => {
       .limit(10000) // Limit export size
       .lean();
 
-    // ADDED: Map populated data for export too
+    // Map populated data for export
     auditLogs = auditLogs.map(log => ({
       ...log,
       userName: log.userId?.name || log.userName || 'Unknown User',
@@ -293,36 +544,30 @@ export const exportAuditLogs = async (req, res) => {
       return res.json(auditLogs);
     }
 
-    // UPDATED: CSV format headers to include userName
+    // CSV format headers
     const csvHeaders = [
       'Timestamp',
-      'User Name', // UPDATED: Better formatting
+      'User Name',
       'User Email',
       'Action',
       'Resource',
       'Resource ID',
       'Method',
       'Message',
-      'Status',
-      'IP Address',
-      'User Agent',
-      'Error Message'
+      'Status'
     ].join(',');
 
-    // UPDATED: CSV rows to include userName
+    // CSV rows
     const csvRows = auditLogs.map(log => [
       new Date(log.createdAt).toISOString(),
-      `"${log.userName || ''}"`, // NEW: Include userName
+      `"${log.userName || ''}"`,
       `"${log.userEmail || ''}"`,
       log.action || '',
       log.resource || '',
       log.resourceId || '',
       log.method || '',
       `"${(log.message || '').replace(/"/g, '""')}"`,
-      log.status || '',
-      log.ipAddress || '',
-      `"${(log.userAgent || '').substring(0, 100)}"`,
-      `"${(log.errorMessage || '').replace(/"/g, '""')}"`
+      log.status || ''
     ].join(','));
 
     const csvContent = [csvHeaders, ...csvRows].join('\n');
@@ -341,10 +586,18 @@ export const exportAuditLogs = async (req, res) => {
 };
 
 /**
- * Delete old audit logs (cleanup)
+ * Delete old audit logs (cleanup) - Admin only
  */
 export const cleanupAuditLogs = async (req, res) => {
   try {
+    // Only allow admins to cleanup logs
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Admin only'
+      });
+    }
+
     const { daysToKeep = 90 } = req.body;
     
     const cutoffDate = new Date();

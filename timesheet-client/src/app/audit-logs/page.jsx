@@ -3,28 +3,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../../lib/axios';
 import { formatDateToReadable } from '../../lib/dateFormate';
 import {
-    Search,
-    Filter,
-    Download,
-    Calendar,
-    User,
-    Activity,
-    AlertCircle,
-    CheckCircle,
-    Plus,
-    Edit,
-    Trash2,
-    BarChart3,
-    Clock,
-    Shield,
-    RefreshCw,
-    MessageSquare,
-    LogIn,
-    LogOut,
-    Menu,
-    X
+    Search, Filter, Download, Calendar, User, Activity,
+    AlertCircle, CheckCircle, Plus, Edit, Trash2, BarChart3,
+    Clock, Shield, RefreshCw, MessageSquare, LogIn, LogOut, Menu, X
 } from 'lucide-react';
-
 
 const AuditDashboard = () => {
     const [auditLogs, setAuditLogs] = useState({ docs: [], totalPages: 0, page: 1, totalDocs: 0 });
@@ -34,9 +16,10 @@ const AuditDashboard = () => {
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('logs');
     const [showFilters, setShowFilters] = useState(false);
+    const [userRole, setUserRole] = useState(null);
     const [filters, setFilters] = useState({
         page: 1,
-        limit: 15,  // Changed from 20 to 15
+        limit: 15,
         resource: '',
         action: '',
         status: '',
@@ -45,25 +28,29 @@ const AuditDashboard = () => {
         search: ''
     });
 
+    // Get user role from localStorage or context
+    useEffect(() => {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user && user.role) {
+            setUserRole(user.role);
+        }
+    }, []);
 
-    // Fetch audit logs from backend
+    // Fetch audit logs from backend with role-based filtering
     const fetchAuditLogs = async () => {
         try {
             setLoading(true);
             setError(null);
 
-
             const cleanFilters = Object.fromEntries(
                 Object.entries(filters).filter(([_, value]) => value !== '' && value !== null)
             );
 
-
             const response = await api.get('/audit', { params: cleanFilters });
-            console.log(response);
-
 
             if (response.data.success) {
                 setAuditLogs(response.data.data);
+                console.log('📊 Query Time:', response.data.queryTime, 'ms');
             } else {
                 throw new Error(response.data.message || 'Failed to fetch audit logs');
             }
@@ -76,17 +63,15 @@ const AuditDashboard = () => {
         }
     };
 
-
     // Fetch statistics from backend
     const fetchStats = async () => {
         try {
             setStatsLoading(true);
             const response = await api.get('/audit/stats');
-            console.log(response);
-
 
             if (response.data.success) {
                 setStats(response.data.data);
+                console.log('📈 Stats loaded:', response.data.data.summary);
             } else {
                 throw new Error(response.data.message || 'Failed to fetch statistics');
             }
@@ -95,6 +80,9 @@ const AuditDashboard = () => {
             setStats({
                 summary: {
                     totalLogs: 0,
+                    successCount: 0,
+                    failureCount: 0,
+                    uniqueUsers: 0,
                     actionStats: [],
                     statusStats: []
                 },
@@ -105,16 +93,13 @@ const AuditDashboard = () => {
         }
     };
 
-
     useEffect(() => {
         fetchAuditLogs();
     }, [filters]);
 
-
     useEffect(() => {
         fetchStats();
     }, []);
-
 
     const handleFilterChange = (field, value) => {
         setFilters(prev => ({
@@ -124,17 +109,15 @@ const AuditDashboard = () => {
         }));
     };
 
-
     const handleRefresh = () => {
         fetchAuditLogs();
         fetchStats();
     };
 
-
     const resetFilters = () => {
         setFilters({
             page: 1,
-            limit: 15,  // Changed from 20 to 15
+            limit: 15,
             resource: '',
             action: '',
             status: '',
@@ -145,17 +128,96 @@ const AuditDashboard = () => {
         setShowFilters(false);
     };
 
+    // Role-based dashboard title
+    const getDashboardTitle = () => {
+        switch (userRole) {
+            case 'admin':
+                return 'Admin Audit Dashboard';
+            case 'project_manager':
+                return 'Project Manager Dashboard';
+            default:
+                return 'Audit Dashboard';
+        }
+    };
+
+    // Role-based dashboard subtitle
+    const getDashboardSubtitle = () => {
+        switch (userRole) {
+            case 'admin':
+                return 'Monitor and track all system activities across the platform';
+            case 'project_manager':
+                return 'Track activities related to your projects and team members';
+            default:
+                return 'Monitor and track your activities';
+        }
+    };
+
+    // Role-based resource filter options
+    const getResourceOptions = () => {
+        const baseOptions = [
+            { value: '', label: 'All Resources' },
+            { value: 'auth', label: 'Authentication' }
+        ];
+
+        if (userRole === 'admin') {
+            return [
+                ...baseOptions,
+                { value: 'users', label: 'Users' },
+                { value: 'projects', label: 'Projects' },
+                { value: 'timesheets', label: 'Timesheets' },
+                { value: 'assignproject', label: 'Assignments' }
+            ];
+        } else if (userRole === 'project_manager') {
+            return [
+                ...baseOptions,
+                { value: 'projects', label: 'Projects' },
+                { value: 'timesheets', label: 'Timesheets' },
+                { value: 'assignproject', label: 'Assignments' },
+                { value: 'users', label: 'Team Members' }
+            ];
+        } else {
+            return [
+                ...baseOptions,
+                { value: 'timesheets', label: 'My Timesheets' }
+            ];
+        }
+    };
+
+    // Role-based action filter options
+    const getActionOptions = () => {
+        const baseOptions = [
+            { value: '', label: 'All Actions' },
+            { value: 'LOGIN', label: 'Login' },
+            { value: 'LOGOUT', label: 'Logout' }
+        ];
+
+        if (userRole === 'admin') {
+            return [
+                ...baseOptions,
+                { value: 'CREATE', label: 'Create' },
+                { value: 'UPDATE', label: 'Update' },
+                { value: 'DELETE', label: 'Delete' }
+            ];
+        } else if (userRole === 'project_manager') {
+            return [
+                ...baseOptions,
+                { value: 'CREATE', label: 'Create' },
+                { value: 'UPDATE', label: 'Update' },
+                { value: 'DELETE', label: 'Delete' }
+            ];
+        } else {
+            return baseOptions;
+        }
+    };
 
     const formatTimestamp = (timestamp) => {
         const dateString = formatDateToReadable(timestamp);
         const dateObj = new Date(timestamp);
 
-
         if (isNaN(dateObj.getTime())) return { date: '', time: '' };
 
-
         return {
-            date: dateString, // Uses your existing formatDateToReadable function
+            date: dateString,
             time: dateObj.toLocaleTimeString('en-US', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -163,7 +225,6 @@ const AuditDashboard = () => {
             })
         };
     };
-
 
     const getActionStyle = (action) => {
         const styles = {
@@ -176,7 +237,6 @@ const AuditDashboard = () => {
         return styles[action] || 'bg-gray-50 text-gray-700 border-gray-200';
     };
 
-
     const getStatusColor = (status) => {
         const colors = {
             SUCCESS: 'bg-green-100 text-green-800 border-green-300',
@@ -186,25 +246,28 @@ const AuditDashboard = () => {
         return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
     };
 
-
     const exportLogs = async (format = 'csv') => {
         try {
             const cleanFilters = Object.fromEntries(
                 Object.entries(filters).filter(([_, value]) => value !== '' && value !== null)
             );
 
-
             const response = await api.get('/audit/export', {
                 params: { ...cleanFilters, format },
                 responseType: 'blob'
             });
 
-
             const blob = new Blob([response.data]);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.${format}`;
+
+            // Enhanced filename based on role using formatDateToReadable
+            const readableDate = formatDateToReadable(new Date());
+            const rolePrefix = userRole === 'admin' ? 'admin-all' :
+                userRole === 'project_manager' ? 'pm-team' : 'user';
+            a.download = `audit-logs-${rolePrefix}-${readableDate}.${format}`;
+
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -214,7 +277,6 @@ const AuditDashboard = () => {
             alert('Export failed. Please try again.');
         }
     };
-
 
     const StatCard = ({ title, value, icon, color = 'blue', loading = false }) => (
         <div className="bg-white rounded-lg sm:rounded-xl border border-gray-100 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
@@ -234,7 +296,6 @@ const AuditDashboard = () => {
         </div>
     );
 
-
     const ErrorMessage = ({ message, onRetry }) => (
         <div className="bg-red-50 border-l-4 border-red-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -252,19 +313,27 @@ const AuditDashboard = () => {
         </div>
     );
 
-
     return (
         <div className="bg-gradient-to-br p-3 sm:p-6">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
+                {/* Header - Role-based */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
                     <div>
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">
-                            Audit Dashboard
+                            {getDashboardTitle()}
                         </h1>
                         <p className="text-sm sm:text-base text-gray-600">
-                            Monitor and track all system activities
+                            {getDashboardSubtitle()}
                         </p>
+                        {/* Role indicator */}
+                        {userRole && (
+                            <div className="flex items-center mt-2">
+                                <Shield className="w-4 h-4 mr-2 text-blue-600" />
+                                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full capitalize">
+                                    {userRole.replace('_', ' ')}
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={handleRefresh}
@@ -274,7 +343,6 @@ const AuditDashboard = () => {
                         <span className="font-medium text-gray-700">Refresh</span>
                     </button>
                 </div>
-
 
                 {/* Error Message */}
                 {error && (
@@ -287,11 +355,10 @@ const AuditDashboard = () => {
                     />
                 )}
 
-
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
                     <StatCard
-                        title="Total Activities"
+                        title={userRole === 'admin' ? 'Total Activities' : userRole === 'project_manager' ? 'Team Activities' : 'My Activities'}
                         value={stats?.summary?.totalLogs?.toLocaleString() || 0}
                         icon={<Activity />}
                         color="blue"
@@ -300,8 +367,8 @@ const AuditDashboard = () => {
                     <StatCard
                         title="Success Rate"
                         value={
-                            stats?.summary?.totalLogs
-                                ? `${Math.round(((stats.summary.statusStats?.find(s => s._id === 'SUCCESS')?.count || 0) / stats.summary.totalLogs) * 100)}%`
+                            stats?.summary?.totalLogs && stats?.summary?.successCount
+                                ? `${Math.round((stats.summary.successCount / stats.summary.totalLogs) * 100)}%`
                                 : '0%'
                         }
                         icon={<CheckCircle />}
@@ -309,21 +376,20 @@ const AuditDashboard = () => {
                         loading={statsLoading}
                     />
                     <StatCard
-                        title="Active Users"
-                        value={stats?.topUsers?.length || 0}
+                        title={userRole === 'admin' ? 'Active Users' : userRole === 'project_manager' ? 'Team Members' : 'Sessions'}
+                        value={stats?.summary?.uniqueUsers || 0}
                         icon={<User />}
                         color="purple"
                         loading={statsLoading}
                     />
                     <StatCard
                         title="Failed Actions"
-                        value={stats?.summary?.statusStats?.find(s => s._id === 'FAILURE')?.count || 0}
+                        value={stats?.summary?.failureCount || 0}
                         icon={<AlertCircle />}
                         color="red"
                         loading={statsLoading}
                     />
                 </div>
-
 
                 {/* Main Content */}
                 <div className="bg-white rounded-lg sm:rounded-xl border border-gray-100 shadow-lg overflow-hidden">
@@ -332,8 +398,8 @@ const AuditDashboard = () => {
                         <nav className="flex space-x-4 sm:space-x-8 px-3 sm:px-6 min-w-max">
                             <button
                                 className={`py-3 sm:py-4 px-1 sm:px-2 border-b-2 font-semibold text-sm transition-all duration-300 whitespace-nowrap ${activeTab === 'logs'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                                 onClick={() => setActiveTab('logs')}
                             >
@@ -342,7 +408,6 @@ const AuditDashboard = () => {
                             </button>
                         </nav>
                     </div>
-
 
                     {/* Activity Logs Tab */}
                     {activeTab === 'logs' && (
@@ -358,12 +423,10 @@ const AuditDashboard = () => {
                                 </button>
                             </div>
 
-
-                            {/* Compact Filters - Single Row Layout */}
+                            {/* Compact Filters - Role-based options */}
                             <div className={`mb-4 sm:mb-6 ${showFilters ? 'block' : 'hidden sm:block'}`}>
-                                {/* Main Filter Row */}
                                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                                    {/* Search Input - Compact */}
+                                    {/* Search Input */}
                                     <div className="relative flex-1 min-w-[200px] max-w-[250px]">
                                         <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
                                         <input
@@ -375,37 +438,33 @@ const AuditDashboard = () => {
                                         />
                                     </div>
 
-
-                                    {/* Resource Filter - Compact */}
+                                    {/* Resource Filter - Role-based options */}
                                     <select
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[90px]"
                                         value={filters.resource}
                                         onChange={(e) => handleFilterChange('resource', e.target.value)}
                                     >
-                                        <option value="">Resources</option>
-                                        <option value="users">Users</option>
-                                        <option value="projects">Projects</option>
-                                        <option value="timesheets">Timesheets</option>
-                                        <option value="assignProject">Assignments</option>
+                                        {getResourceOptions().map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
                                     </select>
 
-
-                                    {/* Action Filter - Compact */}
+                                    {/* Action Filter - Role-based options */}
                                     <select
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[80px]"
                                         value={filters.action}
                                         onChange={(e) => handleFilterChange('action', e.target.value)}
                                     >
-                                        <option value="">Actions</option>
-                                        <option value="CREATE">Create</option>
-                                        <option value="UPDATE">Update</option>
-                                        <option value="DELETE">Delete</option>
-                                        <option value="LOGIN">Login</option>
-                                        <option value="LOGOUT">Logout</option>
+                                        {getActionOptions().map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
                                     </select>
 
-
-                                    {/* Status Filter - Compact */}
+                                    {/* Status Filter */}
                                     <select
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[70px]"
                                         value={filters.status}
@@ -417,8 +476,7 @@ const AuditDashboard = () => {
                                         <option value="ERROR">Error</option>
                                     </select>
 
-
-                                    {/* Date Filters - Compact */}
+                                    {/* Date Filters */}
                                     <input
                                         type="date"
                                         className="px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors text-xs min-w-[110px]"
@@ -426,7 +484,6 @@ const AuditDashboard = () => {
                                         onChange={(e) => handleFilterChange('startDate', e.target.value)}
                                         title="Start Date"
                                     />
-
 
                                     <input
                                         type="date"
@@ -436,8 +493,7 @@ const AuditDashboard = () => {
                                         title="End Date"
                                     />
 
-
-                                    {/* Action Buttons - Compact */}
+                                    {/* Action Buttons */}
                                     <div className="flex items-center gap-2 ml-auto">
                                         <button
                                             onClick={() => exportLogs('csv')}
@@ -455,22 +511,83 @@ const AuditDashboard = () => {
                                         </button>
                                     </div>
                                 </div>
-                            </div>
 
+                                {/* Quick Filter Buttons for Project Managers */}
+                                {/* {userRole === 'project_manager' && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        <button
+                                            onClick={() => handleFilterChange('resource', 'assignproject')}
+                                            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                                filters.resource === 'assignproject' 
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                                                    : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            Assignments
+                                        </button>
+                                        <button
+                                            onClick={() => handleFilterChange('resource', 'auth')}
+                                            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                                filters.resource === 'auth' 
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                                                    : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            Login/Logout
+                                        </button>
+                                        <button
+                                            onClick={() => handleFilterChange('resource', 'timesheets')}
+                                            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                                filters.resource === 'timesheets' 
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                                                    : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            Timesheets
+                                        </button>
+                                        <button
+                                            onClick={() => handleFilterChange('resource', 'projects')}
+                                            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                                filters.resource === 'projects' 
+                                                    ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                                                    : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            Projects
+                                        </button>
+                                    </div>
+                                )} */}
+                            </div>
 
                             {/* Logs Display - Always Table Format */}
                             {loading ? (
                                 <div className="flex justify-center items-center py-12 sm:py-16">
                                     <div className="flex flex-col items-center">
                                         <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-blue-600 mb-4"></div>
-                                        <span className="text-base sm:text-lg text-gray-600">Loading audit logs...</span>
+                                        <span className="text-base sm:text-lg text-gray-600">
+                                            {userRole === 'admin' ? 'Loading system audit logs...' :
+                                                userRole === 'project_manager' ? 'Loading team activity logs...' :
+                                                    'Loading your audit logs...'}
+                                        </span>
                                     </div>
                                 </div>
                             ) : auditLogs.docs?.length === 0 ? (
                                 <div className="text-center py-12 sm:py-16">
                                     <Activity className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4 sm:mb-6" />
-                                    <p className="text-lg sm:text-xl text-gray-600 mb-2">No audit logs found</p>
-                                    <p className="text-sm text-gray-500">Try adjusting your filters or check back later</p>
+                                    <p className="text-lg sm:text-xl text-gray-600 mb-2">
+                                        {userRole === 'project_manager'
+                                            ? 'No team activity logs found'
+                                            : userRole === 'admin'
+                                                ? 'No system audit logs found'
+                                                : 'No audit logs found'
+                                        }
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        {userRole === 'project_manager'
+                                            ? 'Try adjusting your filters or assign users to your projects'
+                                            : 'Try adjusting your filters or check back later'
+                                        }
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -483,7 +600,6 @@ const AuditDashboard = () => {
                                             Swipe left to see all columns
                                         </p>
                                     </div>
-
 
                                     {/* Scrollable Table for All Screen Sizes */}
                                     <div className="overflow-x-auto">
@@ -502,9 +618,8 @@ const AuditDashboard = () => {
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                                                         Resource
                                                     </th>
-                                                    {/* UPDATED: Combined Message & IP Address column */}
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                                        Message & IP
+                                                        Message
                                                     </th>
                                                     <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                                                         Status
@@ -548,7 +663,6 @@ const AuditDashboard = () => {
                                                                     {log.resource}
                                                                 </span>
                                                             </td>
-                                                            {/* UPDATED: Combined Message & IP Address column with proper text wrapping */}
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
                                                                 <div className="flex items-start">
                                                                     <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mr-1 sm:mr-2 lg:mr-3 mt-0.5 flex-shrink-0" />
@@ -556,14 +670,9 @@ const AuditDashboard = () => {
                                                                         <p className="text-xs sm:text-sm text-gray-900 break-words overflow-wrap-anywhere leading-relaxed" title={log.message}>
                                                                             {log.message}
                                                                         </p>
-                                                                        <span className="text-xs text-gray-500 font-mono mt-1 break-all">
-                                                                            IP: {log.ipAddress || 'N/A'}
-                                                                        </span>
                                                                     </div>
                                                                 </div>
                                                             </td>
-
-
                                                             <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
                                                                 <span className={`inline-flex items-center px-1.5 sm:px-2 lg:px-3 py-1 text-xs font-bold rounded-full border-2 ${getStatusColor(log.status)}`}>
                                                                     {log.status}
@@ -577,7 +686,6 @@ const AuditDashboard = () => {
                                     </div>
                                 </div>
                             )}
-
 
                             {/* Compact Pagination */}
                             {auditLogs.totalPages > 1 && (
@@ -615,6 +723,5 @@ const AuditDashboard = () => {
         </div>
     );
 };
-
 
 export default AuditDashboard;
