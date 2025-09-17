@@ -19,7 +19,7 @@ const AuditDashboard = () => {
     const [userRole, setUserRole] = useState(null);
     const [filters, setFilters] = useState({
         page: 1,
-        limit: 15,
+        limit: 10,
         resource: '',
         action: '',
         status: '',
@@ -117,7 +117,7 @@ const AuditDashboard = () => {
     const resetFilters = () => {
         setFilters({
             page: 1,
-            limit: 15,
+            limit: 10,
             resource: '',
             action: '',
             status: '',
@@ -356,9 +356,16 @@ const AuditDashboard = () => {
                 )}
 
                 {/* Stats Cards */}
+                {/* Stats Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
                     <StatCard
-                        title={userRole === 'admin' ? 'Total Activities' : userRole === 'project_manager' ? 'Team Activities' : 'My Activities'}
+                        title={
+                            userRole === 'admin'
+                                ? 'Total Activities'
+                                : userRole === 'project_manager'
+                                    ? 'Team Activities'
+                                    : 'My Activities'
+                        }
                         value={stats?.summary?.totalLogs?.toLocaleString() || 0}
                         icon={<Activity />}
                         color="blue"
@@ -375,13 +382,8 @@ const AuditDashboard = () => {
                         color="green"
                         loading={statsLoading}
                     />
-                    <StatCard
-                        title={userRole === 'admin' ? 'Active Users' : userRole === 'project_manager' ? 'Team Members' : 'Sessions'}
-                        value={stats?.summary?.uniqueUsers || 0}
-                        icon={<User />}
-                        color="purple"
-                        loading={statsLoading}
-                    />
+
+
                     <StatCard
                         title="Failed Actions"
                         value={stats?.summary?.failureCount || 0}
@@ -390,6 +392,7 @@ const AuditDashboard = () => {
                         loading={statsLoading}
                     />
                 </div>
+
 
                 {/* Main Content */}
                 <div className="bg-white rounded-lg sm:rounded-xl border border-gray-100 shadow-lg overflow-hidden">
