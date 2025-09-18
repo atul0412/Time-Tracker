@@ -41,9 +41,9 @@ const AssignProjectPage = () => {
   // ✅ Helper function to get role tag with proper styling
   const getRoleTag = (role) => {
     if (!role) return null;
-    
+
     const normalizedRole = role.toLowerCase();
-    switch(normalizedRole) {
+    switch (normalizedRole) {
       case 'admin':
         return (
           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full font-medium">
@@ -270,7 +270,7 @@ const AssignProjectPage = () => {
     return (
       <div className=" bg-gradient-to-br flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mt-5 mb-4"></div>
           <p className="text-gray-600 text-lg">Loading project assignments...</p>
         </div>
       </div>
@@ -412,8 +412,8 @@ const AssignProjectPage = () => {
             {/* ✅ Show assignment preview or duplicate warning */}
             {selectedUser && selectedProject && (
               <div className={`mt-4 p-3 border rounded-lg flex items-center gap-2 ${isCurrentSelectionDuplicate
-                  ? 'border-red-200 bg-red-50 text-red-700'
-                  : 'border-purple-200 bg-purple-50 text-purple-700'
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : 'border-purple-200 bg-purple-50 text-purple-700'
                 }`}>
                 {isCurrentSelectionDuplicate ? (
                   <>
@@ -471,8 +471,8 @@ const AssignProjectPage = () => {
               type="submit"
               disabled={assigning || !selectedUser || !selectedProject || isCurrentSelectionDuplicate}
               className={`mt-6 px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isCurrentSelectionDuplicate
-                  ? 'bg-gray-400 text-white'
-                  : 'bg-purple-600 text-white hover:bg-purple-700'
+                ? 'bg-gray-400 text-white'
+                : 'bg-purple-600 text-white hover:bg-purple-700'
                 }`}
             >
               {assigning && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}

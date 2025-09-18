@@ -91,11 +91,10 @@ export default function DashboardPage() {
                     <p className="font-semibold text-gray-900">{user.name}</p>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${user.role === "admin"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-blue-100 text-blue-800"
+                          }`}
                       >
                         {user.role}
                       </span>
@@ -118,7 +117,7 @@ export default function DashboardPage() {
           {/* Loading State */}
           {(loading || authLoading) && (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mt-5 mb-4"></div>
               <p className="text-center text-gray-600 text-lg">
                 Loading your projects...
               </p>
