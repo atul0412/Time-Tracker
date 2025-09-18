@@ -67,9 +67,9 @@ export const assignProjectToUser = async (req, res) => {
         project.description,
         req.user.name || "Project Manager"
       );
-      console.log(`✅ Project assignment email sent to ${user.email} for project: ${project.name}`);
+      // console.log(`Project assignment email sent to ${user.email} for project: ${project.name}`);
     } catch (emailError) {
-      console.error("❌ Failed to send project assignment email:", emailError);
+      console.error("Failed to send project assignment email:", emailError);
     }
 
     // **RECOMMENDED RESPONSE FORMAT FOR AUDIT LOGGER**
@@ -139,10 +139,10 @@ export const deassignProjectFromUser = async (req, res) => {
           projectDescription,                     // projectDescription
           req.user.name || 'Project Manager'     // deassignedBy
         );
-        console.log(`✅ Project deassignment email sent to ${userEmail} for project: ${projectName}`);
+        // console.log(` Project deassignment email sent to ${userEmail} for project: ${projectName}`);
       }
     } catch (emailError) {
-      console.error('❌ Failed to send project deassignment email:', emailError);
+      console.error(' Failed to send project deassignment email:', emailError);
       // Don't fail the deassignment if email fails - log it instead
     }
 
@@ -263,10 +263,10 @@ export const deassignProjectByIds = async (req, res) => {
           projectDescription,                     // projectDescription
           req.user.name || 'Project Manager'     // deassignedBy
         );
-        console.log(`✅ Project deassignment email sent to ${userEmail} for project: ${projectName}`);
+        // console.log(`Project deassignment email sent to ${userEmail} for project: ${projectName}`);
       }
     } catch (emailError) {
-      console.error('❌ Failed to send project deassignment email:', emailError);
+      console.error(' Failed to send project deassignment email:', emailError);
       // Don't fail the deassignment if email fails - log it instead
     }
 

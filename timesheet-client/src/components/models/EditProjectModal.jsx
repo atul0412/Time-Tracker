@@ -25,7 +25,7 @@ const EditProjectModal = ({
 
   // ✅ Safe filtering with null checks - Fixed the filtering logic
   const selectedManagerIds = formData.projectManagers?.map(manager => manager.value) || [];
-  console.log('Selected Manager IDs:', formData);
+  // console.log('Selected Manager IDs:', formData);
   const availableUsers = users?.filter(user => {
     // ✅ Add safety checks for user properties
     const userRole = user?.role || 'unknown';
@@ -126,7 +126,7 @@ const EditProjectModal = ({
               }
               formatOptionLabel={option => {
                 if (!option) return null;
-                console.log('Option:', option);
+                // console.log('Option:', option);
                 // ✅ Safe role handling with fallback
                 const role = option.role || 'No Role';
                 const label = option.label || 'Unknown User';

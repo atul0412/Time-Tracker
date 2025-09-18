@@ -46,7 +46,7 @@ export const createProject = async (req, res) => {
           }
         }
       } catch (emailError) {
-        console.error('❌ Failed to send assignment emails during project creation:', emailError);
+        console.error('Failed to send assignment emails during project creation:', emailError);
       }
     }
 
@@ -133,7 +133,7 @@ export const getAllProjects = async (req, res) => {
       });
     }
 
-    console.log("Projects fetched:", projects);
+    // console.log("Projects fetched:", projects);
     res.status(200).json({
       success: true,
       data: projects,
@@ -259,8 +259,8 @@ export const updateProject = async (req, res) => {
       // Calculate managers to deassign (existing managers not in new)
       const managersToDeassign = existingManagerIds.filter(id => !newManagerIds.includes(id));
 
-      console.log('Managers to assign:', managersToAssign);
-      console.log('Managers to deassign:', managersToDeassign);
+      // console.log('Managers to assign:', managersToAssign);
+      // console.log('Managers to deassign:', managersToDeassign);
 
       // ✅ Assign new managers
       if (managersToAssign.length > 0) {
@@ -283,7 +283,7 @@ export const updateProject = async (req, res) => {
                 updated.description,
                 req.user.name || 'Admin'
               );
-              console.log(`✅ Assignment email sent to ${manager.email} for project: ${updated.name}`);
+              // console.log(`✅ Assignment email sent to ${manager.email} for project: ${updated.name}`);
             }
           }
         } catch (emailError) {
@@ -310,7 +310,7 @@ export const updateProject = async (req, res) => {
                 updated.description,
                 req.user.name || 'Admin'
               );
-              console.log(`✅ Deassignment email sent to ${assignment.user.email} for project: ${updated.name}`);
+              // console.log(`✅ Deassignment email sent to ${assignment.user.email} for project: ${updated.name}`);
             }
           }
         } catch (emailError) {
@@ -324,7 +324,7 @@ export const updateProject = async (req, res) => {
         });
       }
 
-      console.log(`Updated project managers for project ${id}. Assigned: ${managersToAssign.length}, Deassigned: ${managersToDeassign.length}`);
+      // console.log(`Updated project managers for project ${id}. Assigned: ${managersToAssign.length}, Deassigned: ${managersToDeassign.length}`);
     }
 
     // Aggregation to get project with populated projectManagersDetails

@@ -378,7 +378,7 @@ const sendProjectAssignmentEmail = async (
 
   try {
     await transporter.sendMail({ from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`, to, subject, text, html });
-    console.log("✅ Project assignment email sent successfully");
+    // console.log("✅ Project assignment email sent successfully");
   } catch (error) {
     console.error("❌ Error sending project assignment email:", error);
     throw error;
@@ -398,7 +398,7 @@ const sendProjectDeassignmentEmail = async (
 
   try {
     await transporter.sendMail({ from: `"Time-Tracker Project Management" <${process.env.EMAIL}>`, to, subject, text, html });
-    console.log("✅ Project deassignment email sent successfully");
+    // console.log("✅ Project deassignment email sent successfully");
   } catch (error) {
     console.error("❌ Error sending project deassignment email:", error);
     throw error;
@@ -412,7 +412,7 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
 
   try {
     await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
-    console.log("✅ Password reset email sent successfully");
+    // console.log("✅ Password reset email sent successfully");
   } catch (error) {
     console.error("❌ Error sending password reset email:", error);
     throw error;
@@ -426,7 +426,7 @@ const sendWelcomeEmail = async (to, userName = "User", setupPasswordLink) => {
 
   try {
     await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
-    console.log("✅ Welcome email sent successfully");
+    // console.log("✅ Welcome email sent successfully");
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
     throw error;

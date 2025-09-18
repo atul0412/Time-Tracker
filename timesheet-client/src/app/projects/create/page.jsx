@@ -63,7 +63,7 @@ export default function CreateProject() {
       setUsersError(false);
 
       const response = await api.get('/users/getAlluser');
-      console.log('Fetched users:', response.data);
+      // console.log('Fetched users:', response.data);
 
       // Handle different possible data structures
       const userOptions = response.data.map(user => ({
@@ -73,7 +73,7 @@ export default function CreateProject() {
         role: user.role || 'User'
       }));
 
-      console.log('Mapped user options:', userOptions);
+      // console.log('Mapped user options:', userOptions);
       setUsers(userOptions);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -92,7 +92,7 @@ export default function CreateProject() {
 
   // Handle project managers selection
   const handleProjectManagersChange = (selectedOptions) => {
-    console.log('Selected options:', selectedOptions);
+    // console.log('Selected options:', selectedOptions);
     setProjectData((prev) => ({
       ...prev,
       projectManagers: selectedOptions || []
@@ -176,7 +176,7 @@ export default function CreateProject() {
       };
 
       await api.post('/projects/create', submitData);
-      console.log('Project created successfully:', submitData);
+      // console.log('Project created successfully:', submitData);
       toast.success('Project created successfully');
       router.push('/');
     } catch (err) {

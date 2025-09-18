@@ -29,7 +29,7 @@ export default function DashboardPage() {
 
       if (user?.role === "admin" || user?.role === "project_manager") {
         res = await api.get("/projects/allproject");
-        console.log("Admin projects:", res.data.data);
+        // console.log("Admin projects:", res.data.data);
         setProjects(res.data.data || []);
       } else if (user?.role === "user") {
         res = await api.get(`/assignProject/user/${user.id}`);
@@ -190,7 +190,7 @@ export default function DashboardPage() {
 
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {projects.map((data) => (
-                  console.log("Project data:", data),
+                  // console.log("Project data:", data),
                   <Link
                     key={data._id}
                     href={`/projects/${data?.project?._id}`}

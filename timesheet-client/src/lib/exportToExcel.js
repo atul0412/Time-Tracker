@@ -3,7 +3,7 @@ import { saveAs } from 'file-saver';
 import { formatDateToReadable } from './dateFormate';
 
 export const exportTimesheetToExcel = (project, timesheets, filename = 'timesheet.xlsx') => {
-  console.log('Export function called with:', { project, timesheets: timesheets.length, filename });
+  // console.log('Export function called with:', { project, timesheets: timesheets.length, filename });
   
   if (!Array.isArray(timesheets) || timesheets.length === 0) {
     console.warn('No timesheet data to export');
@@ -16,7 +16,7 @@ export const exportTimesheetToExcel = (project, timesheets, filename = 'timeshee
   }
 
   // Debug: Log the first timesheet to see its structure
-  console.log('First timesheet data:', timesheets[0]);
+  // console.log('First timesheet data:', timesheets[0]);
 
   // Try multiple ways to get field names
   let dynamicFieldNames = [];
@@ -24,20 +24,20 @@ export const exportTimesheetToExcel = (project, timesheets, filename = 'timeshee
   if (project.fields && Array.isArray(project.fields)) {
     // Use project schema fields if available
     dynamicFieldNames = project.fields.map((field) => field.fieldName);
-    console.log('Using project fields:', dynamicFieldNames);
+    // console.log('Using project fields:', dynamicFieldNames);
   } else if (timesheets.length > 0 && timesheets[0].data) {
     // Fallback: extract field names from the first timesheet entry
     dynamicFieldNames = Object.keys(timesheets[0].data);
-    console.log('Using fields from timesheet data:', dynamicFieldNames);
+    // console.log('Using fields from timesheet data:', dynamicFieldNames);
   } else {
     // Last resort: use common field names
     dynamicFieldNames = ['date', 'Developer Name', 'Developer name', 'task', 'Effort Hours', 'workingHours', 'Frontend/Backend'];
-    console.log('Using default field names:', dynamicFieldNames);
+    // console.log('Using default field names:', dynamicFieldNames);
   }
 
   // ✅ Convert all field names to uppercase for display headers
   const capitalizedFieldNames = dynamicFieldNames.map(field => field.toUpperCase());
-  console.log('Capitalized field names:', capitalizedFieldNames);
+  // console.log('Capitalized field names:', capitalizedFieldNames);
 
   // ✅ Identify the hours field name (using original case for data lookup)
   const hoursFieldNames = ['Effort Hours', 'workingHours', 'Working Hours', 'hours', 'Hours'];
@@ -47,7 +47,7 @@ export const exportTimesheetToExcel = (project, timesheets, filename = 'timeshee
       hourField.toLowerCase().includes(field.toLowerCase())
     )
   );
-  console.log('Hours field identified as:', hoursFieldName);
+  // console.log('Hours field identified as:', hoursFieldName);
 
   // ✅ Identify task column for text wrapping
   const taskFieldNames = ['task', 'Task', 'description', 'Description', 'work', 'Work'];
@@ -102,8 +102,8 @@ export const exportTimesheetToExcel = (project, timesheets, filename = 'timeshee
     return row;
   });
 
-  console.log('Flattened data:', flattenedData);
-  console.log('Total hours calculated:', totalHours);
+  // console.log('Flattened data:', flattenedData);
+  // console.log('Total hours calculated:', totalHours);
 
   // ✅ Add empty row for spacing
   const emptyRow = {};
@@ -362,11 +362,11 @@ export const exportTimesheetToExcel = (project, timesheets, filename = 'timeshee
   
   saveAs(blob, finalFilename);
   
-  console.log('✅ Excel file generated successfully with enhanced formatting!');
-  console.log('📊 Total hours calculated:', totalHours);
-  console.log('📝 Headers are now BOLD with strong blue background and white text');
-  console.log('📋 Task column has text wrapping enabled with dynamic row heights');
-  console.log('💾 Filename:', finalFilename);
+  // console.log('✅ Excel file generated successfully with enhanced formatting!');
+  // console.log('📊 Total hours calculated:', totalHours);
+  // console.log('📝 Headers are now BOLD with strong blue background and white text');
+  // console.log('📋 Task column has text wrapping enabled with dynamic row heights');
+  // console.log('💾 Filename:', finalFilename);
   
   // ✅ Return comprehensive summary
   return {

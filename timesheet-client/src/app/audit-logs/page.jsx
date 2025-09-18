@@ -50,7 +50,7 @@ const AuditDashboard = () => {
 
             if (response.data.success) {
                 setAuditLogs(response.data.data);
-                console.log('📊 Query Time:', response.data.queryTime, 'ms');
+                // console.log('📊 Query Time:', response.data.queryTime, 'ms');
             } else {
                 throw new Error(response.data.message || 'Failed to fetch audit logs');
             }
@@ -71,7 +71,7 @@ const AuditDashboard = () => {
 
             if (response.data.success) {
                 setStats(response.data.data);
-                console.log('📈 Stats loaded:', response.data.data.summary);
+                // console.log('📈 Stats loaded:', response.data.data.summary);
             } else {
                 throw new Error(response.data.message || 'Failed to fetch statistics');
             }
