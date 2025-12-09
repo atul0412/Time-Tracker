@@ -1,14 +1,35 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 dotenv.config();
+import { google } from "googleapis";
 
-const transporter = nodemailer.createTransport({
-  service: "Gmail",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_PASS,
-  },
+const OAuth2 = google.auth.OAuth2;
+
+const oauth2Client = new OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  process.env.REDIRECT_URI
+);
+
+oauth2Client.setCredentials({
+  refresh_token: process.env.REFRESH_TOKEN,
 });
+
+const createTransporter = async () => {
+  const accessToken = await oauth2Client.getAccessToken();
+
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      type: "OAuth2",
+      user: process.env.EMAIL,
+      clientId: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      refreshToken: process.env.REFRESH_TOKEN,
+      accessToken: accessToken.token,
+    },
+  });
+};
 
 // Main HTML template
 const getHtmlEmailTemplate = ({
@@ -420,20 +441,26 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
 };
 
 const sendWelcomeEmail = async (to, userName = "User", setupPasswordLink) => {
+  const transporter = await createTransporter();
+
   const subject = `🎉 Welcome to Time-Tracker, ${userName}!`;
   const html = getWelcomeEmailHtmlTemplate(userName, setupPasswordLink);
   const text = getWelcomeEmailTextTemplate(userName, setupPasswordLink);
 
   try {
-    await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
-    // console.log("✅ Welcome email sent successfully");
-    console.log("email",process.env.EMAIL );
-    console.log("email-pass",process.env.EMAIL_PASS);
+    await transporter.sendMail({
+      from: `"Time-Tracker" <${process.env.EMAIL}>`,
+      to,
+      subject,
+      text,
+      html,
+    });
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
     throw error;
   }
 };
+
 
 // --- EXPORTS ---
 export { sendProjectAssignmentEmail, sendProjectDeassignmentEmail, sendWelcomeEmail };
