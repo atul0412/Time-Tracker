@@ -28,8 +28,9 @@ export const registerUser = async (req, res) => {
 
     const encryptedToken = encodeURIComponent(encrypt(payload));
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
-
-    await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
+console.log("start sending email from reg user ")
+await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
+console.log("end send email from reg user ")
 
     // UPDATED: Include user object in response for audit logging
     res.status(201).json({ 
@@ -42,8 +43,11 @@ export const registerUser = async (req, res) => {
         role: user.role
       }
     });
+    console.log("reg user res completed");
   } catch (err) {
     console.error(err);
+    console.log("reg use having error");
+    
     res.status(500).json({ message: 'Registration failed', error: err.message });
   }
 };

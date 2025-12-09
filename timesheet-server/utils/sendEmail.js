@@ -420,17 +420,23 @@ const sendResetPasswordEmail = async (to, name = "User", url) => {
 };
 
 const sendWelcomeEmail = async (to, userName = "User", setupPasswordLink) => {
+  console.log("sending email");
   const subject = `🎉 Welcome to Time-Tracker, ${userName}!`;
   const html = getWelcomeEmailHtmlTemplate(userName, setupPasswordLink);
+  console.log("gen email");
   const text = getWelcomeEmailTextTemplate(userName, setupPasswordLink);
-
+  console.log("gen email txt");
+  
   try {
+    console.log("sending....");
     await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
+    console.log("email sended");
     // console.log("✅ Welcome email sent successfully");
     console.log("email",process.env.EMAIL );
     console.log("email-pass",process.env.EMAIL_PASS);
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
+    console.log("email having error");
     throw error;
   }
 };
