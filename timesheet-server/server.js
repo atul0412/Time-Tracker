@@ -20,21 +20,12 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "https://time-sheet-039j-cztdt77pz-atul0412s-projects.vercel.app"
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-
-// Must handle preflight
-app.options("*", cors());
-
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, origin || '*'); // Reflect the request origin
+  },
+  credentials: true
+}));
 
 // Apply audit logging middleware before routes
 app.use(auditLogger({
