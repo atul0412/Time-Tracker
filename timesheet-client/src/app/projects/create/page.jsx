@@ -168,23 +168,35 @@ export default function CreateProject() {
     if (!validate()) return;
 
     setIsSubmitting(true);
+
     try {
-      // Transform project managers to just IDs for backend
       const submitData = {
         ...projectData,
         projectManagers: projectData.projectManagers.map(pm => pm.value)
       };
 
-      await api.post('/projects/create', submitData);
-      // console.log('Project created successfully:', submitData);
+      // ⬅ Call backend
+      const res = await api.post('/projects/create', submitData);
+
+      // 🎉 Project created
       toast.success('Project created successfully');
+
+      // 📧 Email checks
+      if (res.data.emailStatus === "failed") {
+        toast.error(`Email failed: Unknown error`);
+      } else if (res.data.emailStatus === "success") {
+        toast.success(" Email sent successfully!");
+      }
+
       router.push('/');
+
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create project');
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   return (
     <div className=" bg-gradient-to-br ">
@@ -234,8 +246,8 @@ export default function CreateProject() {
                   onChange={handleChange}
                   placeholder="Enter a descriptive project name"
                   className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all ${errors.name
-                      ? 'border-red-300 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-purple-500'
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-purple-500'
                     }`}
                 />
                 {errors.name && (
@@ -524,8 +536,8 @@ export default function CreateProject() {
                     <div key={index}>
                       <div
                         className={`p-4 rounded-lg border transition-all ${field.isDefault
-                            ? 'bg-gray-50 border-gray-200'
-                            : 'bg-white border-purple-200 hover:border-purple-300'
+                          ? 'bg-gray-50 border-gray-200'
+                          : 'bg-white border-purple-200 hover:border-purple-300'
                           }`}
                       >
                         <div className="flex flex-col lg:flex-row lg:items-start gap-4">
@@ -548,10 +560,10 @@ export default function CreateProject() {
                                 onChange={(e) => handleFieldChange(index, e)}
                                 disabled={field.isDefault}
                                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all ${errors[`fieldName_${index}`]
-                                    ? 'border-red-300 focus:ring-red-500'
-                                    : field.isDefault
-                                      ? 'border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed'
-                                      : 'border-gray-300 focus:ring-purple-500'
+                                  ? 'border-red-300 focus:ring-red-500'
+                                  : field.isDefault
+                                    ? 'border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed'
+                                    : 'border-gray-300 focus:ring-purple-500'
                                   }`}
                               />
                               {errors[`fieldName_${index}`] && (
@@ -573,10 +585,10 @@ export default function CreateProject() {
                                 onChange={(e) => handleFieldChange(index, e)}
                                 disabled={field.isDefault}
                                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all ${errors[`fieldType_${index}`]
-                                    ? 'border-red-300 focus:ring-red-500'
-                                    : field.isDefault
-                                      ? 'border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed'
-                                      : 'border-gray-300 focus:ring-purple-500'
+                                  ? 'border-red-300 focus:ring-red-500'
+                                  : field.isDefault
+                                    ? 'border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed'
+                                    : 'border-gray-300 focus:ring-purple-500'
                                   }`}
                               >
                                 <option value="String">Text</option>
