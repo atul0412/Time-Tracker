@@ -153,18 +153,33 @@ export default function AllUsersPage() {
 
     try {
       const res = await api.post('/users/register', { ...newUser, password: new Date() });
+
       const savedUser = {
         ...newUser,
         _id: res.data.user?._id || res.data._id,
         createdAt: new Date().toISOString()
       };
+
+      // Add user in UI
       setUsers((prev) => [...prev, savedUser]);
       setShowModal(false);
       setNewUser({ name: '', email: '', password: '', role: 'user' });
+
+      // 🎉 Show success for user creation
       toast.success('User added successfully');
+
+      // 📧 Check email status from backend
+      if (res.data.emailStatus === "failed") {
+        toast.error("⚠ Email sending failed ");
+      } else {
+        toast.success("Email sent successfully!");
+      }
+
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to add user');
-      toast.error(err?.response?.data?.message || 'Failed to add user');
+      const message = err?.response?.data?.message || "Failed to add user";
+
+      setError(message);
+      toast.error(message);
     } finally {
       setCreating(false);
     }
