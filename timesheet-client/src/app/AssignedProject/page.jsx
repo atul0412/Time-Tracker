@@ -190,51 +190,72 @@ const AssignProjectPage = () => {
 
   const handleAssign = async (e) => {
     e.preventDefault();
+
     if (!selectedUser || !selectedProject) {
       toast.error('Please select both user and project');
       return;
     }
+
     if (isUserAlreadyAssigned(selectedUser, selectedProject)) {
-      const userName = getSelectedUserName();
-      const projectName = getSelectedProjectName();
-      toast.error(
-        `${userName} is already assigned to "${projectName}"`,
-        { duration: 4000, icon: '⚠️' }
-      );
+      toast.error(`${getSelectedUserName()} is already assigned to "${getSelectedProjectName()}"`, { duration: 4000 });
       return;
     }
+
     setAssigning(true);
+
     try {
-      await api.post('/assignProject/assign', {
+      const res = await api.post('/assignProject/assign', {
         userId: selectedUser,
         projectId: selectedProject,
       });
-      toast.success('Project successfully assigned!');
+
+      toast.success('Project assigned successfully!');
+
+      // 📧 Email toast
+      if (res.data.emailStatus === "failed") {
+        toast.error(`Email failed`);
+      } else {
+        toast.success("Email sent successfully!");
+      }
+
       setSelectedUser('');
       setSelectedProject('');
       fetchData();
+
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to assign project.';
-      toast.error(errorMsg);
+      toast.error(err.response?.data?.message || 'Failed to assign project.');
     } finally {
       setAssigning(false);
     }
   };
 
+
   const handleDeassign = async (assignmentId, userName, projectName) => {
     setDeassigning(prev => ({ ...prev, [assignmentId]: true }));
+
     try {
-      await api.delete(`/assignProject/deassign/${assignmentId}`);
+      const res = await api.delete(`/assignProject/deassign/${assignmentId}`);
+
       toast.success(`Successfully removed ${userName} from "${projectName}"`);
+
+      // 📧 Deassignment email toast
+      if (res.data.emailStatus === "failed") {
+        toast.error(`Email failed`);
+        console.log(`Email failed: ${res.data.emailError}`)
+      } else {
+        toast.success(" Deassignment email sent successfully!");
+      }
+
       setConfirmDeassign(null);
       fetchData();
+
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Failed to deassign project.';
-      toast.error(errorMsg);
+      toast.error(err.response?.data?.message || 'Failed to deassign project.');
     } finally {
       setDeassigning(prev => ({ ...prev, [assignmentId]: false }));
     }
   };
+
 
   const activeAssignments = getFilteredAssignments();
   const filteredAssignments = activeAssignments.filter((assignment) => {
