@@ -13,7 +13,7 @@ const extractUserInfo = (req, resData = null) => {
         userName: decoded.name || decoded.firstName || ''
       };
     }
-    
+
     if (resData && resData.user) {
       return {
         userId: resData.user._id,
@@ -53,14 +53,20 @@ const extractResourceFromUrl = (url) => {
 
 // Extract resource ID from URL or request body
 const extractResourceId = (req) => {
-  if (req.params.id) return req.params.id;
-  if (req.params.assignmentId) return req.params.assignmentId;
-  if (req.body && req.body._id) return req.body._id;
-  if (req.body && req.body.id) return req.body.id;
-  if (req.body && req.body.projectId) return req.body.projectId;
-  if (req.body && req.body.userId) return req.body.userId;
-  return null;
+  const params = req.params || {};
+  const body = req.body || {};
+
+  return (
+    params.id ||
+    params.assignmentId ||
+    body._id ||
+    body.id ||
+    body.projectId ||
+    body.userId ||
+    null
+  );
 };
+
 
 // UPDATED: Generate customized audit messages based on resource and action
 const generateAuditMessage = (
@@ -144,9 +150,8 @@ const generateAuditMessage = (
           return `${assignedUserName} is assigned to ${assignedProjectName} project assigned by ${assignedBy} successfully`;
 
         default:
-          return `${
-            resource.charAt(0).toUpperCase() + resource.slice(1)
-          } created successfully`;
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)
+            } created successfully`;
       }
 
     case "UPDATE":
@@ -205,9 +210,8 @@ const generateAuditMessage = (
           return `Project assignment updated: ${updatedAssignedProjectName} to ${updatedAssignedUserName} by ${updatedBy}`;
 
         default:
-          return `${
-            resource.charAt(0).toUpperCase() + resource.slice(1)
-          } updated successfully`;
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)
+            } updated successfully`;
       }
 
     case "DELETE":
@@ -265,9 +269,8 @@ const generateAuditMessage = (
           return `${removedAssignedUserName} is removed from ${removedAssignedProjectName} project by ${deassignedBy}`;
 
         default:
-          return `${
-            resource.charAt(0).toUpperCase() + resource.slice(1)
-          } deleted successfully`;
+          return `${resource.charAt(0).toUpperCase() + resource.slice(1)
+            } deleted successfully`;
       }
 
     default:
@@ -382,12 +385,12 @@ export const auditLogger = (options = {}) => {
         }
 
         // For login/logout, try to get user info from response
-        if (action === "LOGIN" ) {
+        if (action === "LOGIN") {
           if (responseData && responseData.user) {
             userInfo = {
-              userId: responseData.user.id,
-              userEmail: responseData.user.email,
-              userName: responseData.user.name || "",
+              userId: responseData.user.id || responseData.user._id || null,
+              userEmail: responseData.user.email || "anonymous",
+              userName: responseData.user.name || responseData.user.firstName || "",
             };
           }
         }
@@ -420,8 +423,7 @@ export const auditLogger = (options = {}) => {
 
         await AuditLog.create(auditData);
         console.log(
-          `Audit Log Created: ${action} on ${resource} by ${
-            userInfo.userName || "Unknown User"
+          `Audit Log Created: ${action} on ${resource} by ${userInfo.userName || "Unknown User"
           }`
         );
       } catch (error) {
