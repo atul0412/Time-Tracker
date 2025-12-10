@@ -1,12 +1,11 @@
 import mongoose from "mongoose";
 import AssignedProject from "../models/assignedProject.js";
-import Project from "../models/project.js"; 
-import User from "../models/user.js"; 
+import Project from "../models/project.js";
+import User from "../models/user.js";
 import { sendProjectAssignmentEmail, sendProjectDeassignmentEmail } from "../utils/sendEmail.js"; // ✅ Import both email functions
 
 // Assign project to user (admin OR project manager if they manage this project)
 export const assignProjectToUser = async (req, res) => {
-  // FIX: Proper role check
   if (req.user.role !== "admin" && req.user.role !== "project_manager") {
     return res.status(403).json({ message: "Access denied: Admins or project managers only" });
   }
@@ -18,70 +17,63 @@ export const assignProjectToUser = async (req, res) => {
       return res.status(400).json({ message: "Missing userId or projectId" });
     }
 
-    // Check for duplicate assignment
     const existing = await AssignedProject.findOne({ user: userId, project: projectId });
     if (existing) {
-      return res
-        .status(400)
-        .json({ message: "Project already assigned to this user" });
+      return res.status(400).json({ message: "Project already assigned to this user" });
     }
 
-    // Fetch project and user for validation and email
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Project manager additional check: Only allow if manager of project
     if (req.user.role === "project_manager") {
       const isManager =
         Array.isArray(project.projectManagers) &&
         project.projectManagers.some(
-          manager =>
-            (manager?.toString?.() || manager?._id?.toString?.() || manager?.id?.toString?.()) === req.user._id.toString() ||
-            (typeof manager === "object" && (manager._id === req.user._id || manager.id === req.user._id))
+          manager => manager.toString() === req.user._id.toString()
         );
       if (!isManager) {
         return res.status(403).json({ message: "Access denied: You are not a manager for this project." });
       }
     }
 
-    // Create assignment
     const assignment = await AssignedProject.create({
       user: userId,
       project: projectId,
     });
 
-    // Populate for response
     const populatedAssignment = await AssignedProject.findById(assignment._id)
       .populate("user", "name email")
       .populate("project", "name description");
 
-    // Send assignment email
+    // 🚀 Email status variables
+    let emailStatus = "success";
+    let emailErrorMessage = null;
+
     try {
       await sendProjectAssignmentEmail(
-        user.email, 
-        user.name, 
-        project.name, 
+        user.email,
+        user.name,
+        project.name,
         project.description,
         req.user.name || "Project Manager"
       );
-      // console.log(`Project assignment email sent to ${user.email} for project: ${project.name}`);
     } catch (emailError) {
-      console.error("Failed to send project assignment email:", emailError);
+      emailStatus = "failed";
+      emailErrorMessage = emailError.message;
+      console.error("Failed to send project assignment email:", emailError.message);
     }
 
-    // **RECOMMENDED RESPONSE FORMAT FOR AUDIT LOGGER**
     res.status(201).json({
       success: true,
-      message: "Project assigned successfully and notification sent",
-      project: { id: project._id, name: project.name, description: project.description },
-      user: { id: user._id, name: user.name, email: user.email },
-      assignedBy: req.user.name || "Project Manager",
+      message: "Project assigned successfully",
       assignment: populatedAssignment,
-      assignedAt: new Date()
+      emailStatus,
+      emailError: emailErrorMessage,
     });
+
   } catch (err) {
     console.error("Assign Project Error:", err);
     res.status(500).json({ message: "Failed to assign project", error: err.message });
@@ -89,28 +81,18 @@ export const assignProjectToUser = async (req, res) => {
 };
 
 
+
 // ✅ UPDATED: Deassign project from user with email notification and audit logging
 export const deassignProjectFromUser = async (req, res) => {
   if (req.user.role !== "admin" && req.user.role !== "project_manager") {
-    return res.status(403).json({ message: "Access denied: Admins or project managers only" });
+    return res.status(403).json({ message: "Access denied" });
   }
 
   try {
     const { assignmentId } = req.params;
 
-    // Validate assignmentId
     if (!assignmentId) {
-      return res.status(400).json({
-        success: false,
-        message: "Assignment ID is required",
-      });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid assignment ID format",
-      });
+      return res.status(400).json({ success: false, message: "Assignment ID is required" });
     }
 
     const assignment = await AssignedProject.findById(assignmentId)
@@ -118,91 +100,39 @@ export const deassignProjectFromUser = async (req, res) => {
       .populate("project", "name description");
 
     if (!assignment) {
-      return res.status(404).json({
-        success: false,
-        message: "Assignment not found or already removed",
-      });
+      return res.status(404).json({ success: false, message: "Assignment not found" });
     }
 
-    const userName = assignment.user?.name || "Unknown User";
-    const projectName = assignment.project?.name || "Unknown Project";
-    const userEmail = assignment.user?.email;
-    const projectDescription = assignment.project?.description;
+    let emailStatus = "success";
+    let emailErrorMessage = null;
 
-    // ✅ Send project deassignment email BEFORE deleting the assignment
     try {
-      if (userEmail) {
-        await sendProjectDeassignmentEmail(
-          userEmail,                              // to
-          userName,                               // userName
-          projectName,                            // projectName
-          projectDescription,                     // projectDescription
-          req.user.name || 'Project Manager'     // deassignedBy
-        );
-        // console.log(` Project deassignment email sent to ${userEmail} for project: ${projectName}`);
-      }
+      await sendProjectDeassignmentEmail(
+        assignment.user.email,
+        assignment.user.name,
+        assignment.project.name,
+        assignment.project.description,
+        req.user.name || "Project Manager"
+      );
     } catch (emailError) {
-      console.error(' Failed to send project deassignment email:', emailError);
-      // Don't fail the deassignment if email fails - log it instead
+      emailStatus = "failed";
+      emailErrorMessage = emailError.message;
+      console.error("Failed to send deassignment email:", emailError.message);
     }
 
-    // ✅ Delete the assignment after sending email
     await AssignedProject.findByIdAndDelete(assignmentId);
 
-    // UPDATED: Structure response for audit logger
     res.status(200).json({
       success: true,
-      message: `Successfully removed ${userName} from project "${projectName}" and notification sent`,
-      project: { 
-        id: assignment.project._id, 
-        name: assignment.project.name, 
-        description: assignment.project.description 
-      },
-      user: { 
-        id: assignment.user._id, 
-        name: assignment.user.name, 
-        email: assignment.user.email 
-      },
-      deassignedBy: req.user.name || 'Project Manager',
-      removedAssignment: {
-        id: assignment._id,
-        user: {
-          id: assignment.user._id,
-          name: assignment.user.name,
-          email: assignment.user.email,
-        },
-        project: {
-          id: assignment.project._id,
-          name: assignment.project.name,
-          description: assignment.project.description,
-        },
-        deassignedBy: req.user.name || 'Project Manager',
-        removedAt: new Date(),
-      },
+      message: "User deassigned successfully",
+      assignmentId,
+      emailStatus,
+      emailError: emailErrorMessage,
     });
+
   } catch (error) {
     console.error("Error deassigning project:", error);
-
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid assignment ID format",
-      });
-    }
-
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors: Object.values(error.errors).map((e) => e.message),
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Internal server error while deassigning project",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -280,15 +210,15 @@ export const deassignProjectByIds = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Successfully removed ${userName} from project "${projectName}" and notification sent`,
-      project: { 
-        id: assignment.project._id, 
-        name: assignment.project.name, 
-        description: assignment.project.description 
+      project: {
+        id: assignment.project._id,
+        name: assignment.project.name,
+        description: assignment.project.description
       },
-      user: { 
-        id: assignment.user._id, 
-        name: assignment.user.name, 
-        email: assignment.user.email 
+      user: {
+        id: assignment.user._id,
+        name: assignment.user.name,
+        email: assignment.user.email
       },
       deassignedBy: req.user.name || 'Project Manager',
       removedAssignment: {
