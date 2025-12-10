@@ -1,427 +1,370 @@
-// controllers/projectController.js
-import mongoose from "mongoose";
-import Project from "../models/project.js";
-import AssignedProject from "../models/assignedProject.js";
-import User from "../models/user.js";
-import { sendProjectAssignmentEmail, sendProjectDeassignmentEmail } from "../utils/sendEmail.js"; // ✅ Import email functions
+import User from '../models/user.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import sendEmail, { sendWelcomeEmail } from '../utils/sendEmail.js';// Assume you have this
+import { decrypt, encrypt } from '../utils/encryption.js'
+import AuditLog from '../models/AuditLog.js';
 
-export const createProject = async (req, res) => {
+export const registerUser = async (req, res) => {
   try {
-    const { name, projectManagers, description, fields } = req.body;
+    const { name, email, password, role } = req.body;
 
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ message: "Unauthorized: No user info found" });
+    // 1️⃣ Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists",
+      });
     }
 
-    // 1️⃣ Create the Project
-    const newProject = await Project.create({
+    // 2️⃣ Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3️⃣ Create user in DB
+    const user = await User.create({
       name,
-      description,
-      projectManagers,
-      fields,
-      createdBy: req.user._id,
+      email,
+      password: hashedPassword,
+      role: role || "user",
     });
 
+    // 4️⃣ Prepare reset token (for email)
+    const payload = { id: user._id, email: user.email };
+    const encryptedToken = encodeURIComponent(encrypt(payload));
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
+
     let emailStatus = "success";
-    let emailErrorMessage = null;
 
-    // 2️⃣ Assign project managers
-    if (Array.isArray(projectManagers) && projectManagers.length > 0) {
-      const assignments = projectManagers.map((managerId) => ({
-        user: managerId,
-        project: newProject._id,
-      }));
-
-      await AssignedProject.insertMany(assignments);
-
-      // 3️⃣ Send assignment emails
-      try {
-        for (const managerId of projectManagers) {
-          const manager = await User.findById(managerId);
-          if (manager) {
-            await sendProjectAssignmentEmail(
-              manager.email,
-              manager.name,
-              newProject.name,
-              newProject.description,
-              req.user.name || "Admin"
-            );
-          }
-        }
-      } catch (emailError) {
-        console.error("Email sending failed:", emailError.message);
-        emailStatus = "failed";
-        emailErrorMessage = emailError.message; // store actual SMTP error
-      }
+    // 5️⃣ Try sending welcome email (non-blocking)
+    try {
+      console.log("📧 Starting welcome email...");
+      await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
+      console.log("📧 Email sent successfully");
+    } catch (emailError) {
+      console.error("❌ Email sending failed:", emailError.message);
+      emailStatus = "failed"; // mark failed but continue
     }
 
-    // 4️⃣ Return response with email info
+    // 6️⃣ FINAL RESPONSE (user created even if email failed)
+    console.log("✔ User added sucessfully ");
+
     return res.status(201).json({
       success: true,
-      message: "Project created successfully",
-      project: newProject,
+      message: "User registered successfully",
       emailStatus,
-      emailError: emailErrorMessage,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
 
   } catch (err) {
-    console.error("Create Project Error:", err);
+    console.error("❌ Registration failed:", err.message);
+
     return res.status(500).json({
       success: false,
-      message: "Failed to create project",
+      message: "Registration failed",
       error: err.message,
     });
   }
 };
 
 
-export const getAllProjects = async (req, res) => {
+
+export const loginUser = async (req, res) => {
   try {
-    let projects;
+    const { email, password } = req.body;
 
-    if (req.user.role === "admin") {
-      // Admin: return all projects with creator info in the same structure
-      projects = await Project.find()
-        .populate("createdBy", "name email")
-        .lean();
-
-      projects = projects.map((p) => ({
-        _id: p._id,
-        project: {
-          _id: p._id,
-          name: p.name,
-          description: p.description,
-          createdAt: p.createdAt,
-        },
-        user: {
-          _id: p.createdBy?._id,
-          name: p.createdBy?.name,
-          email: p.createdBy?.email,
-        },
-      }));
-    } else if (req.user.role === "project_manager") {
-      // Manager: only assigned projects
-      projects = await Project.aggregate([
-        {
-          $match: {
-            projectManagers: {
-              $in: [new mongoose.Types.ObjectId(req.user._id)],
-            },
-          },
-        },
-        {
-          $addFields: {
-            project: {
-              _id: "$_id",
-              name: "$name",
-              description: "$description",
-              createdAt: "$createdAt",
-            },
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "projectManagers",
-            foreignField: "_id",
-            as: "user",
-          },
-        },
-        { $unwind: "$user" },
-        { $match: { "user._id": new mongoose.Types.ObjectId(req.user._id) } },
-        {
-          $project: {
-            _id: 1,
-            project: 1,
-            user: {
-              _id: "$user._id",
-              name: "$user.name",
-              email: "$user.email",
-              role: "$user.role",
-            },
-          },
-        },
-      ]);
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized access",
-      });
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // console.log("Projects fetched:", projects);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        role: user.role,
+        email: user.email,
+        name: user.name  // Add name to JWT payload
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '2d' }
+    );
+
+    // Return response - audit logger middleware will handle logging automatically
+    res.json({
+      token,
+      user: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        id: user._id
+      }
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Login failed', error: err.message });
+  }
+};
+
+
+// Add this to your existing authController.js file
+
+export const logoutUser = async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Your audit logger middleware will automatically capture this
+    // as a LOGOUT action because the URL includes '/logout'
+
     res.status(200).json({
       success: true,
-      data: projects,
+      message: 'Logout successful',
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email
+      }
     });
   } catch (error) {
-    console.error(error);
+    console.error('Logout error:', error);
     res.status(500).json({
       success: false,
-      message: "Server Error",
+      message: 'Logout failed',
+      error: error.message
     });
   }
 };
 
-export const getProjectById = async (req, res) => {
+
+
+// Get all users (admin only)
+export const getAllUsers = async (req, res) => {
+  try {
+    // Allow only admins and project managers
+    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'project_manager')) {
+      return res.status(403).json({ message: 'Access denied: Only admins and project managers allowed' });
+    }
+
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch users', error: err.message });
+  }
+};
+
+
+// ✅ Delete user (admin only)
+export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const project = await Project.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(id) },
-      },
-      {
-        $lookup: {
-          from: "users", // collection name in MongoDB
-          localField: "projectManagers",
-          foreignField: "_id",
-          as: "projectManagersDetails",
-        },
-      },
-    ]);
-
-    if (!project || project.length === 0) {
-      return res.status(404).json({ message: "Project not found" });
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admins only' });
     }
 
-    res.status(200).json({ success: true, data: project[0] });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Failed to get project", error: err.message });
-  }
-};
-
-export const deleteProject = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied: Admins only" });
-  }
-
-  try {
-    // UPDATED: Find project first to get project details before deletion
-    const projectToDelete = await Project.findById(req.params.id);
-    if (!projectToDelete) {
-      return res.status(404).json({ message: "Project not found" });
+    // UPDATED: Find user first to get user details before deletion
+    const userToDelete = await User.findById(id);
+    if (!userToDelete) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // Store project details before deletion
-    const deletedProjectInfo = {
-      _id: projectToDelete._id,
-      name: projectToDelete.name,
-      description: projectToDelete.description,
-      startDate: projectToDelete.startDate,
-      endDate: projectToDelete.endDate,
-      status: projectToDelete.status
+    // Store user details before deletion
+    const deletedUserInfo = {
+      _id: userToDelete._id,
+      name: userToDelete.name,
+      email: userToDelete.email,
+      role: userToDelete.role
     };
 
-    // Now delete the project
-    const deleted = await Project.findByIdAndDelete(req.params.id);
+    // Now delete the user
+    const deletedUser = await User.findByIdAndDelete(id);
 
-    // UPDATED: Include deleted project info in response for audit logging
+    // UPDATED: Include deleted user info in response for audit logging
     res.json({
-      message: "Project deleted successfully",
-      project: deletedProjectInfo // Include project info for audit logging
+      message: 'User deleted successfully',
+      user: deletedUserInfo // Include user info for audit logging
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Failed to delete project", error: err.message });
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete user', error: err.message });
   }
 };
 
-
-// ✅ ENHANCED: Update project with automatic assignment/deassignment
-export const updateProject = async (req, res) => {
-  if (req.user.role !== "admin" && req.user.role !== "project_manager") {
-    return res.status(403).json({ message: "Access denied: Admins or Project Managers only" });
-  }
-
+// ✅ Update user details
+export const updateUser = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, description, projectManagers, fields } = req.body;
+    const { id } = req.params; // user ID from URL
+    const { name, email, password, role } = req.body;
 
-    // ✅ Get the existing project to compare project managers
-    const existingProject = await Project.findById(id);
-    if (!existingProject) {
-      return res.status(404).json({ message: "Project not found" });
+    // Check permissions
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    if (req.user.role !== 'admin' && req.user.userId !== id) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Build update object with any provided fields
-    const updateObj = {};
-    if (name !== undefined) updateObj.name = name;
-    if (description !== undefined) updateObj.description = description;
-    if (projectManagers !== undefined) updateObj.projectManagers = projectManagers;
-    if (fields !== undefined) updateObj.fields = fields;
+    // Find user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    // Update the project document
-    const updated = await Project.findByIdAndUpdate(id, updateObj, {
-      new: true,
-      runValidators: true,
-    });
+    // Update fields if provided
+    if (name) user.name = name;
+    if (email) user.email = email;
 
-    // ✅ Handle project manager assignment/deassignment changes
-    if (projectManagers !== undefined) {
-      const existingManagers = existingProject.projectManagers || [];
-      const newManagers = projectManagers || [];
+    // Only admin can update role
+    if (role && req.user.role === 'admin') {
+      user.role = role;
+    }
 
-      // Convert ObjectIds to strings for comparison
-      const existingManagerIds = existingManagers.map(id => id.toString());
-      const newManagerIds = newManagers.map(id => id.toString());
+    // If password provided, hash it
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 12);
+      user.password = hashedPassword;
+    }
 
-      // Calculate managers to assign (new managers not in existing)
-      const managersToAssign = newManagerIds.filter(id => !existingManagerIds.includes(id));
+    await user.save();
 
-      // Calculate managers to deassign (existing managers not in new)
-      const managersToDeassign = existingManagerIds.filter(id => !newManagerIds.includes(id));
-
-      // console.log('Managers to assign:', managersToAssign);
-      // console.log('Managers to deassign:', managersToDeassign);
-
-      // ✅ Assign new managers
-      if (managersToAssign.length > 0) {
-        const newAssignments = managersToAssign.map(managerId => ({
-          user: managerId,
-          project: id,
-        }));
-
-        await AssignedProject.insertMany(newAssignments);
-
-        // Send assignment emails to new managers
-        try {
-          for (const managerId of managersToAssign) {
-            const manager = await User.findById(managerId);
-            if (manager) {
-              await sendProjectAssignmentEmail(
-                manager.email,
-                manager.name,
-                updated.name,
-                updated.description,
-                req.user.name || 'Admin'
-              );
-              // console.log(`✅ Assignment email sent to ${manager.email} for project: ${updated.name}`);
-            }
-          }
-        } catch (emailError) {
-          console.error('❌ Failed to send assignment emails:', emailError);
-        }
+    res.json({
+      message: 'User updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
       }
-
-      // ✅ Deassign removed managers
-      if (managersToDeassign.length > 0) {
-        // Get assignments to deassign for email purposes
-        const assignmentsToRemove = await AssignedProject.find({
-          user: { $in: managersToDeassign },
-          project: id
-        }).populate('user', 'name email');
-
-        // Send deassignment emails before removing assignments
-        try {
-          for (const assignment of assignmentsToRemove) {
-            if (assignment.user) {
-              await sendProjectDeassignmentEmail(
-                assignment.user.email,
-                assignment.user.name,
-                updated.name,
-                updated.description,
-                req.user.name || 'Admin'
-              );
-              // console.log(`✅ Deassignment email sent to ${assignment.user.email} for project: ${updated.name}`);
-            }
-          }
-        } catch (emailError) {
-          console.error('❌ Failed to send deassignment emails:', emailError);
-        }
-
-        // Remove assignments
-        await AssignedProject.deleteMany({
-          user: { $in: managersToDeassign },
-          project: id
-        });
-      }
-
-      // console.log(`Updated project managers for project ${id}. Assigned: ${managersToAssign.length}, Deassigned: ${managersToDeassign.length}`);
-    }
-
-    // Aggregation to get project with populated projectManagersDetails
-    const project = await Project.aggregate([
-      { $match: { _id: new mongoose.Types.ObjectId(id) } },
-      {
-        $lookup: {
-          from: "users", // your users collection name
-          localField: "projectManagers",
-          foreignField: "_id",
-          as: "projectManagersDetails",
-        },
-      },
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: project[0],
-      message: "Project updated successfully with manager assignments/deassignments processed"
     });
   } catch (err) {
-    console.error("Update Project Error:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to update project", error: err.message });
+    console.error('Update User Error:', err);
+    res.status(500).json({ message: 'Failed to update user', error: err.message });
   }
 };
 
-export const updateAssignProjectToUser = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied: Admins only" });
-  }
 
+// Forgot password
+
+// export const forgotPassword = async (req, res) => {
+//   const { email } = req.body;
+//   const user = await User.findOne({ email });
+//   if (!user) return res.status(404).json({ message: "User not found" });
+
+//   const token = crypto.randomBytes(32).toString("hex");
+//   user.resetToken = token;
+//   user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+//   await user.save();
+
+//  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;;
+//   const message = `Click this link to reset your password: ${resetUrl}`;
+//   await sendEmail(user.email, "Reset Password", message);
+
+//   res.status(200).json({ message: "Reset email sent." });
+// };
+
+export const forgotPassword = async (req, res) => {
   try {
-    const { userId, projectId } = req.body;
+    const { email } = req.body;
 
-    if (!userId || !projectId) {
-      return res.status(400).json({ message: "Missing userId or projectId" });
-    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    const project = await Project.findByIdAndUpdate(
-      projectId,
-      { $addToSet: { assignedUsers: userId } }, // Prevents duplicate assignments
-      { new: true }
-    ).populate("assignedUsers", "name email"); // Optional: populate user info
+    const payload = {
+      id: user._id,
+      email: user.email
+    };
 
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
-    }
+    const encryptedToken = encodeURIComponent(encrypt(payload));
+    // console.log(encryptedToken)
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
 
-    res.status(200).json({
-      success: true,
-      message: "Project assigned successfully",
-      data: project,
-    });
-  } catch (err) {
-    console.error("Assign Project Error:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to assign project", error: err.message });
-  }
-};
+    // const message = `Click this link to reset your password: ${resetUrl}`;
 
-export const getMyProjects = async (req, res) => {
-  try {
-    const userId = req.user._id;
+    await sendEmail(user.email, "Reset Password", resetUrl);
 
-    const projects = await Project.find({ assignedUsers: userId })
-      .populate("createdBy", "name")
-      .populate("assignedUsers", "name email");
+    res.status(200).json({ message: "Reset email sent." });
 
-    res.status(200).json({
-      success: true,
-      data: projects,
-    });
   } catch (error) {
-    console.error("Get My Projects Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch assigned projects",
-      error: error.message,
-    });
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({ message: "Something went wrong." });
+  }
+};
+
+
+//  Reset password
+// export const resetPassword = async (req, res) => {
+//   const { token } = req.params;
+//   const { password } = req.body;
+
+//   if (!token) {
+//     return res.status(400).json({ message: "Missing token" });
+//   }
+
+//   console.log("Reset token received:", token);
+
+//   const user = await User.findOne({
+//     resetToken: token,
+//     resetTokenExpiry: { $gt: Date.now() },
+//   });
+
+//   if (!user) return res.status(400).json({ message: "Invalid or expired token." });
+
+//   const hashedPassword = await bcrypt.hash(password, 12);
+//   user.password = hashedPassword;
+//   user.resetToken = undefined;
+//   user.resetTokenExpiry = undefined;
+
+//   await user.save();
+//   res.status(200).json({ message: "Password reset successful." });
+// };
+
+export const resetPassword = async (req, res) => {
+  const { token } = req.query; // token passed as a query param now
+  const { password } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ message: "Missing token" });
+  }
+
+  try {
+    // Decrypt the token to get the payload
+    const { payload, timestamp } = decrypt(decodeURIComponent(token));
+    const { id } = payload;
+
+
+    // Optional: Check if the token is expired (e.g., valid for 24 hours)
+    if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
+      return res.status(400).json({ message: "Token expired" });
+    }
+
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    user.password = hashedPassword;
+
+    await user.save();
+    res.status(200).json({ message: "Password reset successful." });
+
+  } catch (err) {
+    console.error("Reset Password Error:", err.message);
+    return res.status(400).json({ message: "Invalid or tampered token" });
   }
 };
