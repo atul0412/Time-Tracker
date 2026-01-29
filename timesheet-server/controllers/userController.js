@@ -35,12 +35,14 @@ export const registerUser = async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encryptedToken}`;
 
     let emailStatus = "success";
+    let emailResponse;
 
     // 5️⃣ Try sending welcome email (non-blocking)
     try {
       console.log("📧 Starting welcome email...");
-      await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
+      const resposne = await sendWelcomeEmail(user.email, "Welcome to Time-Tracker!", resetUrl);
       console.log("📧 Email sent successfully");
+      emailResponse = response;
     } catch (emailError) {
       console.error("❌ Email sending failed:", emailError.message);
       emailStatus = "failed"; // mark failed but continue
@@ -53,6 +55,7 @@ export const registerUser = async (req, res) => {
       success: true,
       message: "User registered successfully",
       emailStatus,
+      emailResponse,
       user: {
         _id: user._id,
         name: user.name,
