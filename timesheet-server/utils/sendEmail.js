@@ -82,10 +82,13 @@ const sendWelcomeEmail = async (to, userName = "User", setupPasswordLink) => {
   const text = getWelcomeEmailTextTemplate(userName, setupPasswordLink);
 
   try {
-    await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
+    const emailResponse = await transporter.sendMail({ from: `"Time-Tracker" <${process.env.EMAIL}>`, to, subject, text, html });
+    
     // console.log("✅ Welcome email sent successfully");
-    console.log("email", process.env.EMAIL);
-    console.log("email-pass", process.env.EMAIL_PASS);
+    //console.log("email", process.env.EMAIL);
+    //console.log("email-pass", process.env.EMAIL_PASS);
+    console.log('emailResponse',emailResponse);
+    return emailResponse;
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
     throw error;
